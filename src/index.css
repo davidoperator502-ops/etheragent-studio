@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root, .dark {
+    /* Core Background & Foreground (Absolute Dark) */
+    --background: 240 10% 4%; /* #0a0a0c - Onyx Black */
+    --foreground: 0 0% 100%;
+
+    /* Emerald Branding (Primary) */
+    --primary: 152 76% 53%; /* Emerald 500 */
+    --primary-foreground: 240 10% 4%; /* Black text on emerald buttons */
+
+    /* Glassmorphism Surfaces */
+    --card: 240 5% 11%; /* #1C1C1E */
+    --card-foreground: 0 0% 100%;
+    --popover: 240 5% 11%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Muted & Accents */
+    --muted: 240 5% 20%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 5% 15%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 0 0% 15%; /* Subtle white/gray border */
+    --input: 0 0% 15%;
+    --ring: 152 76% 53%; /* Emerald focus rings */
+
+    --radius: 1.5rem; /* Rounding for standard components */
+
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 152 76% 53%;
+    --sidebar-primary-foreground: 240 10% 4%;
+    --sidebar-accent: 0 0% 100% / 0.1;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100% / 0.05;
+    --sidebar-ring: 152 76% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-emerald-500/30 overflow-hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar for clean UI but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Ocultar scrollbars pero mantener la funcionalidad */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* The Ultimate Glass Panel Utility */
+  .glass-panel {
+    @apply bg-[#1C1C1E]/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  /* Cybernetic Grid Background */
+  .bg-grid-pattern {
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 4rem 4rem;
+  }
+}
