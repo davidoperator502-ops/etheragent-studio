@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Terminal, PlayCircle, Settings, Grid } from 'lucide-react';
+import { Home, PlayCircle, Settings, Grid } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function MobileTabBar() {
@@ -8,7 +8,7 @@ export default function MobileTabBar() {
 
     const TABS = [
         { icon: Home, route: '/hub', label: 'Hub' },
-        { icon: Terminal, route: '/nexus', label: 'Nexus' },
+
         { icon: Grid, route: '/social', label: 'Labs' },
         { icon: PlayCircle, route: '/replay', label: 'Replay' },
         { icon: Settings, route: '/configuracion', label: 'Ajustes' },

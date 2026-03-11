@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AnimatePresence } from 'framer-motion';
@@ -13,6 +13,7 @@ import { VoiceProvider } from '@/context/GlobalVoiceContext';
 import OmniAgentOrb from '@/components/layout/OmniAgentOrb';
 
 const Index = lazy(() => import('./pages/Index'));
+const Landing = lazy(() => import('./pages/Landing'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const Login = lazy(() => import('./pages/Login'));
 const Prototypes = lazy(() => import('./pages/Prototypes'));
@@ -26,7 +27,7 @@ const PageLoader = () => (
 );
 
 const App = () => (
-  <BrowserRouter>
+  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
@@ -37,9 +38,12 @@ const App = () => (
               <Suspense fallback={<PageLoader />}>
                 <AnimatePresence mode="wait">
                   <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/dashboard/*" element={<Index />} />
                     <Route path="/prototypes" element={<Prototypes />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/*" element={<Index />} />
+                    <Route path="/subscription" element={<Navigate to="/dashboard/subscription" replace />} />
+                    <Route path="/executive-demo" element={<Navigate to="/dashboard/executive-demo" replace />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AnimatePresence>

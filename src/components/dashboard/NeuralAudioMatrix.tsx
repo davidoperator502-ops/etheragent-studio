@@ -1,186 +1,147 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Mic, Copy, Upload, CheckCircle2,
-  Volume2, Cpu, Smartphone, MonitorPlay, Target,
-  Radio, Headphones, Podcast
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Volume2, Upload, Loader2, CheckCircle2, Terminal, PlaySquare, Target, Globe, Activity, DollarSign } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
 
-const AUDIO_REQUIREMENTS = [
-  {
-    id: 'nexus_welcome',
-    module: 'Nexus Genesis',
-    icon: <Cpu size={18} className="text-emerald-500" />,
-    agent: 'System Core (Marcus / Adam)',
-    context: 'Bienvenida a la plataforma (Home)',
-    script: "Infraestructura en línea. Bienvenido a EtherAgent OS. Estás frente al motor de compilación neuronal más avanzado del mercado. Inyecta tu dominio o un asset visual en la terminal. El sistema extraerá tu arquetipo corporativo y generará tu matriz de dominación omnicanal en segundos.",
-    color: 'emerald'
-  },
-  {
-    id: 'social_valeria_1',
-    module: 'Social Lab',
-    icon: <Smartphone size={18} className="text-emerald-500" />,
-    agent: 'Valeria M. (Growth Hacker)',
-    context: 'Primer mensaje del chat',
-    script: "Iniciando sesión segura. He analizado el vector 'La muerte de la agencia tradicional' para la cuenta de EtherAgent Studio. He ajustado el hook para generar un ochenta y siete por ciento de retención en los primeros tres segundos. ¿Autorizas la compilación del audio sintético con voz de Autoridad?",
-    color: 'emerald'
-  },
-  {
-    id: 'ooh_viktor_1',
-    module: 'Virtual OOH Lab',
-    icon: <MonitorPlay size={18} className="text-cyan-500" />,
-    agent: 'Viktor S. (Spatial Architect)',
-    context: 'Propuesta de despliegue en Metaverso',
-    script: "Conexión a Nodos Globales establecida. Detecto liquidez de tráfico masiva en el servidor Neo-Shibuya de Unreal Engine. El CPM está en mínimos históricos. ¿Desplegamos el holograma de EtherAgent Studio en una valla inmersiva para impactar a doscientos cincuenta mil usuarios concurrentes hoy?",
-    color: 'cyan'
-  },
-  {
-    id: 'ads_kaelen_1',
-    module: 'Performance Ads Lab',
-    icon: <Target size={18} className="text-violet-500" />,
-    agent: 'Kaelen R. (Conversion Architect)',
-    context: 'Voiceover del anuncio B2B',
-    script: "Cómo cerramos cuatrocientos cincuenta mil dólares en ingresos recurrentes sin grabar un solo video. La era de la edición manual terminó. Los CEOs no editan, compilan. Implementa contratos inteligentes de atención con EtherAgent OS y escala tus conversiones automáticamente.",
-    color: 'violet'
-  },
-  {
-    id: 'audio_spotify_1',
-    module: 'Sonic Lab (Spotify)',
-    icon: <Radio size={18} className="text-amber-500" />,
-    agent: 'Aria V. (Sonic Architect)',
-    context: 'Spotify B2B Ad — Interrupción de Patrón',
-    script: "[SFX: Glitch digital + 1s de silencio]. Estás escuchando este anuncio porque nuestra red neuronal detectó tu perfil corporativo. No grabamos esta voz en un estudio; fue compilada en milisegundos por EtherAgent OS. Los CEOs modernos no contratan locutores; ejecutan contratos de atención sintética. Domina el espectro auditivo. Inicia tu infraestructura en EtherAgent punto Studio.",
-    color: 'amber'
-  },
-  {
-    id: 'audio_podcast_1',
-    module: 'Sonic Lab (Mid-roll)',
-    icon: <Podcast size={18} className="text-amber-500" />,
-    agent: 'Aria V.',
-    context: 'Podcast Mid-roll — Efecto ASMR / Proximidad',
-    script: "[Voz íntima/Cercana]. Pausa tu podcast un segundo. Presta atención a la respiración y el tono de mi voz... Lo que escuchas no es humano. Es una instancia neuronal de alta fidelidad. Las agencias de élite ya están desplegando campañas globales a latencia cero. El audio ahora es código. Deja de editar. Empieza a compilar.",
-    color: 'amber'
-  },
-  {
-    id: 'audio_dialogue_1',
-    module: 'Sonic Lab (AI Dialogue)',
-    icon: <Headphones size={18} className="text-amber-500" />,
-    agent: 'Aria V. & Marcus V.',
-    context: 'Diálogo Sintético — Dos IAs',
-    script: "Aria: Marcus, el CEO que nos escucha aún usa agencias tradicionales. / Marcus: Un error de cálculo. Nuestro costo de despliegue es un 90% menor y no dormimos. / Aria: Exacto. Bienvenidos a EtherAgent OS. Sus nuevos agentes de ventas están listos para compilar.",
-    color: 'amber'
-  }
+// 1. VOCES DEL SISTEMA (Command Hub)
+const COMMAND_HUB_SCRIPTS = [
+  { id: 'ch_welcome', title: '1. Bienvenida Inicial (Marcus)', text: "Sistemas en línea, CEO. Soy Marcus. Tenemos tres protocolos. Uno: Dame una marca y crearemos tu campaña. Dos: Inyección visual. O tres: La Demostración Ejecutiva. ¿Qué eliges?" },
+  { id: 'ch_opt1_neural', title: '2. Opción 1: Escaneo Neural (Marcus)', text: "Recibido. Extrayendo el ADN corporativo de la marca. Valeria, toma el control. Extrae los datos con Gemini y crea los vectores visuales para el Social Lab." },
+  { id: 'ch_opt2_visual', title: '3. Opción 2: Inyección Visual (Marcus)', text: "Abriendo matriz de inyección visual. Prepara tus assets." },
+  { id: 'ch_opt3_demo', title: '4. Opción 3: Demo Ejecutiva (Marcus)', text: "Iniciando Demostración Ejecutiva. Cargando matriz de misiones. Transfiriendo el control." }
 ];
 
+// 2. GUIONES MULTI-MISIÓN PARA TASK REPLAYS
+const MISSION_SCRIPTS = {
+  ecommerce: [
+    { id: 'tr_ecommerce_hub', agent: 'Marcus', title: '1. Hub', text: "Conexión a Shopify confirmada. Arquetipo 'NeuroBoost' extraído. Vector principal: Rendimiento Z. Estrategia de lanzamiento omnicanal iniciada." },
+    { id: 'tr_ecommerce_social', agent: 'Valeria', title: '2. Social', text: "150 hooks sintetizados. El formato 'unboxing caótico' proyecta 87% de retención. Costo por clic aplastado a 0.12 centavos. Compilando Kinesia para Reels." },
+    { id: 'tr_ecommerce_ooh', agent: 'Viktor', title: '3. OOH', text: "Inventario físico asegurado en 40 paradas universitarias. Códigos QR dinámicos en caché. Desplegando holograma táctico para tráfico peatonal." },
+    { id: 'tr_ecommerce_commercial', agent: 'Kaelen', title: '4. Commercial', text: "Tráfico orgánico colapsando. Video Sales Letter de retargeting desplegado para carritos abandonados. Retorno de inversión en 4.8x. Misión cumplida." }
+  ],
+  saas: [
+    { id: 'tr_saas_hub', agent: 'Marcus', title: '1. Hub', text: "Protocolo B2B Enterprise activado. Target: Directores Financieros. Extrayendo puntos de dolor sobre costos operativos de la nube." },
+    { id: 'tr_saas_social', agent: 'Valeria', title: '2. Social', text: "Píldoras de autoridad compiladas para LinkedIn. Guiones generados para avatares ejecutivos. Mensaje central: Reducción de costos en un 40%." },
+    { id: 'tr_saas_ooh', agent: 'Viktor', title: '3. OOH', text: "Hackeando circuito visual del distrito financiero. Pantallas de aeropuertos VIP sincronizadas con mensaje de ROI. Impacto B2B asegurado." },
+    { id: 'tr_saas_commercial', agent: 'Kaelen', title: '4. Commercial', text: "Spot documental generado. Embudo de conversión directa a agenda de Calendly activo. Flujo de leads High-Ticket estable." }
+  ],
+  fintech: [
+    { id: 'tr_fintech_hub', agent: 'Marcus', title: '1. Hub', text: "Vector de adquisición Fintech en línea. Presupuesto agresivo confirmado. Optimizando Costo de Adquisición de Usuario." },
+    { id: 'tr_fintech_social', agent: 'Valeria', title: '2. Social', text: "Programa de referidos inyectado en Meta Ads. Gráficas de confianza y tarjetas metálicas renderizadas. Fricción de registro eliminada." },
+    { id: 'tr_fintech_ooh', agent: 'Viktor', title: '3. OOH', text: "Vallas panorámicas reservadas en avenidas principales. La omnipresencia física genera confianza bancaria. Despliegue masivo." },
+    { id: 'tr_fintech_commercial', agent: 'Kaelen', title: '4. Commercial', text: "Spot de prueba social compilado con testimonios sintéticos. Tasa de apertura de cuentas un 300% superior al benchmark. Dominio financiero." }
+  ],
+  web3: [
+    { id: 'tr_web3_hub', agent: 'Marcus', title: '1. Hub', text: "Protocolo de ingeniería social activado. Analizando sentimiento en Discord y X. Vector de campaña: Caos controlado y exclusividad FOMO." },
+    { id: 'tr_web3_social', agent: 'Valeria', title: '2. Social', text: "Ejército orgánico desplegado. Filtrando 'accidentalmente' el whitepaper del airdrop. Viralidad y especulación en aumento crítico." },
+    { id: 'tr_web3_ooh', agent: 'Viktor', title: '3. OOH', text: "Pantallas en estaciones de metro parpadeando con coordenadas secretas. Cuenta regresiva holográfica sincronizada globalmente." },
+    { id: 'tr_web3_commercial', agent: 'Kaelen', title: '4. Commercial', text: "Tráiler cinemático renderizado. Caída de servidores por exceso de tráfico calculada. Sold out de la colección proyectado en 4 minutos." }
+  ],
+  landing: [
+    { id: 'landing_social_audio', agent: 'Valeria', title: 'Pavos Virales', text: "Hermano, ¿viste lo que cuesta el Costo por Clic hoy en día? Nos van a cocinar. Tranquilo, yo instalé EtherAgent OS. La inteligencia artificial está bajando el CAC mientras nosotros comemos maíz." },
+    { id: 'landing_commercial_audio', agent: 'Kaelen', title: 'VSL Cierre', text: "El cierre maestro. Creación de Video Sales Letters cinemáticos para retargeting de alto impacto. Transformamos el tráfico en ingresos predecibles." }
+  ]
+};
+
 export default function NeuralAudioMatrix() {
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, boolean>>({});
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [loadingIds, setLoadingIds] = useState<Record<string, boolean>>({});
+  const [uploadedIds, setUploadedIds] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState<'ecommerce' | 'saas' | 'fintech' | 'web3' | 'landing'>('ecommerce');
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+  useEffect(() => {
+    const checkExistingAudios = async () => {
+      const { data } = await supabase.from('system_scripts').select('id, audio_url');
+      if (data) {
+        const uploaded: Record<string, boolean> = {};
+        data.forEach(item => { if (item.audio_url) uploaded[item.id] = true; });
+        setUploadedIds(uploaded);
+      }
+    };
+    checkExistingAudios();
+  }, []);
 
-  const handleFileUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setTimeout(() => {
-        setUploadedFiles(prev => ({ ...prev, [id]: true }));
-      }, 800);
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, scriptId: string) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      setLoadingIds(prev => ({ ...prev, [scriptId]: true }));
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${scriptId}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage.from('system-audio').upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('system-audio').getPublicUrl(fileName);
+      await supabase.from('system_scripts').upsert({ id: scriptId, audio_url: publicUrl, updated_at: new Date() });
+
+      setUploadedIds(prev => ({ ...prev, [scriptId]: true }));
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al subir el audio.');
+    } finally {
+      setLoadingIds(prev => ({ ...prev, [scriptId]: false }));
     }
   };
 
-  return (
-    <div className="flex-1 p-8 h-screen overflow-y-auto">
-      <div className="mb-10">
-        <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">
-          <Volume2 size={14} className="text-zinc-400" /> Voice Synthesis Control
-        </div>
-        <h1 className="text-3xl font-bold text-white uppercase tracking-tight">
-          Neural Audio <span className="font-light text-zinc-600">Matrix</span>
-        </h1>
-        <p className="text-zinc-400 mt-2 font-mono text-sm">
-          Panel de inyección de voces sintéticas (ElevenLabs / Azure). Copia el guion, genera el audio y carga el .mp3 para activar a los Agentes.
-        </p>
+  const handleCopyPrompt = (text: string) => navigator.clipboard.writeText(text);
+
+  const ScriptCard = ({ script }: { script: any }) => (
+    <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-6 flex flex-col relative group hover:border-emerald-500/20 transition-all">
+      <div className="flex justify-between items-start mb-6">
+        <h3 className="text-sm font-bold text-white"><span className="text-zinc-500">{script.title} </span>{script.agent}</h3>
+        {uploadedIds[script.id] ? (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-mono uppercase"><CheckCircle2 size={10} /> LISTO</div>
+        ) : (
+          <div className="px-2 py-1 rounded-full bg-zinc-900 border border-white/10 text-zinc-500 text-[9px] font-mono uppercase">SIN MP3</div>
+        )}
       </div>
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-zinc-600 font-mono text-[9px] uppercase">Guion / Prompt</span>
+          <button onClick={() => handleCopyPrompt(script.text)} className="text-zinc-400 hover:text-white font-mono text-[9px] bg-white/5 px-2 py-1 rounded border border-white/10 transition-colors">Copiar</button>
+        </div>
+        <p className="text-zinc-300 text-xs italic bg-black/50 p-4 rounded-xl border border-white/5">"{script.text}"</p>
+      </div>
+      <div className="mt-auto">
+        <label className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${uploadedIds[script.id] ? 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-[#111] hover:bg-zinc-900 border-white/10 text-zinc-400'}`}>
+          <input type="file" accept="audio/mpeg,audio/mp3,audio/wav" onChange={(e) => handleFileUpload(e, script.id)} disabled={loadingIds[script.id]} className="hidden" />
+          {loadingIds[script.id] ? <><Loader2 size={14} className="animate-spin" /> Procesando...</> : <><Upload size={14} /> {uploadedIds[script.id] ? 'REEMPLAZAR MP3' : 'SUBIR MP3'}</>}
+        </label>
+      </div>
+    </div>
+  );
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20">
-        {AUDIO_REQUIREMENTS.map((req) => (
-          <motion.div
-            key={req.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-zinc-950/60 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-6 shadow-2xl flex flex-col relative overflow-hidden"
-          >
-            <div className={`absolute -right-20 -top-20 w-64 h-64 bg-${req.color}-500/10 blur-[80px] rounded-full pointer-events-none`} />
+  return (
+    <div className="flex flex-col h-full min-h-screen w-full bg-[#050505] text-white p-4 md:p-8 pb-32 overflow-y-auto">
+      <div className="max-w-6xl mx-auto w-full">
+        <header className="mb-12">
+          <h1 className="text-3xl font-black tracking-widest uppercase text-white mb-4">NEURAL AUDIO <span className="text-zinc-500">MATRIX</span></h1>
+          <p className="text-zinc-400 text-sm">Gestiona los audios y prompts de todas las simulaciones de la Executive Demo.</p>
+        </header>
 
-            <div className="flex justify-between items-start mb-6 relative z-10">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 bg-zinc-900 border border-${req.color}-500/30 rounded-xl flex items-center justify-center`}>
-                  {req.icon}
-                </div>
-                <div>
-                  <h3 className="text-white font-bold">{req.module}</h3>
-                  <p className="text-xs text-zinc-500 font-mono uppercase">{req.agent}</p>
-                </div>
-              </div>
+        {/* SECCIÓN 1: COMMAND HUB */}
+        <div className="mb-12">
+          <h2 className="text-blue-500 font-mono text-xs uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-white/5 pb-4"><Terminal size={14} /> 1. SISTEMA OPERATIVO (Command Hub)</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">{COMMAND_HUB_SCRIPTS.map(script => <ScriptCard key={script.id} script={script} />)}</div>
+        </div>
 
-              {uploadedFiles[req.id] ? (
-                <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase">
-                  <CheckCircle2 size={12} /> Audio Inyectado
-                </div>
-              ) : (
-                <div className="px-3 py-1 bg-zinc-900 border border-zinc-800 text-zinc-500 rounded-full flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase">
-                  <Mic size={12} /> Esperando Audio
-                </div>
-              )}
-            </div>
+        {/* SECCIÓN 2: MULTI-MISIÓN TABS */}
+        <div>
+          <h2 className="text-red-500 font-mono text-xs uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-white/5 pb-4"><PlaySquare size={14} /> 2. MISIONES DE DEMOSTRACIÓN (Task Replay)</h2>
+          
+          {/* TABS DE SELECCIÓN */}
+          <div className="flex flex-wrap gap-2 mb-8 bg-[#111] p-1 rounded-xl w-fit border border-white/5">
+            <button onClick={() => setActiveTab('ecommerce')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'ecommerce' ? 'bg-emerald-500/20 text-emerald-500' : 'text-zinc-500 hover:text-white'}`}><Target size={14}/> E-Commerce</button>
+            <button onClick={() => setActiveTab('saas')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'saas' ? 'bg-blue-500/20 text-blue-500' : 'text-zinc-500 hover:text-white'}`}><Globe size={14}/> B2B SaaS</button>
+            <button onClick={() => setActiveTab('fintech')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'fintech' ? 'bg-purple-500/20 text-purple-500' : 'text-zinc-500 hover:text-white'}`}><Activity size={14}/> Fintech</button>
+            <button onClick={() => setActiveTab('web3')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'web3' ? 'bg-orange-500/20 text-orange-500' : 'text-zinc-500 hover:text-white'}`}><DollarSign size={14}/> Web3</button>
+            <button onClick={() => setActiveTab('landing')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'landing' ? 'bg-white/20 text-white' : 'text-zinc-500 hover:text-white'}`}><Volume2 size={14}/> Landing</button>
+          </div>
 
-            <div className="bg-black/50 border border-zinc-800 rounded-xl p-4 mb-6 flex-1 relative z-10">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest">Contexto: {req.context}</span>
-                <button
-                  onClick={() => handleCopy(req.script, req.id)}
-                  className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1 text-xs font-mono bg-zinc-900 px-2 py-1 rounded"
-                >
-                  {copiedId === req.id ? <span className="text-emerald-500 flex items-center gap-1"><CheckCircle2 size={12} /> Copiado</span> : <><Copy size={12} /> Copiar Prompt</>}
-                </button>
-              </div>
-              <p className="text-zinc-300 text-sm italic leading-relaxed">"{req.script}"</p>
-            </div>
-
-            <div className="relative z-10 mt-auto">
-              <input
-                type="file"
-                accept="audio/mpeg, audio/mp3, audio/wav"
-                className="hidden"
-                id={`upload-${req.id}`}
-                onChange={(e) => handleFileUpload(req.id, e)}
-              />
-              <label
-                htmlFor={`upload-${req.id}`}
-                className={`w-full py-4 rounded-xl border border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all ${uploadedFiles[req.id]
-                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500 hover:bg-emerald-500/20'
-                    : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-white/30 hover:text-white'
-                  }`}
-              >
-                {uploadedFiles[req.id] ? (
-                  <>
-                    <Volume2 size={18} />
-                    <span className="font-bold text-sm">REEMPLAZAR ARCHIVO .MP3</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={18} />
-                    <span className="font-bold text-sm">SUBIR AUDIO (.MP3)</span>
-                  </>
-                )}
-              </label>
-            </div>
-
-          </motion.div>
-        ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {MISSION_SCRIPTS[activeTab].map(script => <ScriptCard key={script.id} script={script} />)}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ const ActiveTelemetry = lazy(() => import('@/components/dashboard/ActiveTelemetr
 const PricingPlans = lazy(() => import('@/components/dashboard/PricingPlans'));
 const DeploymentSequence = lazy(() => import('@/components/dashboard/DeploymentSequence'));
 const GlobalExchange = lazy(() => import('@/components/dashboard/GlobalExchange'));
+const NexusIntelligence = lazy(() => import('@/components/dashboard/NexusIntelligence'));
 const NexusDashboard = lazy(() => import('@/components/dashboard/NexusDashboard'));
 const SocialLab = lazy(() => import('@/components/dashboard/SocialLab'));
 const VirtualOOHLab = lazy(() => import('@/components/dashboard/VirtualOOHLab'));
@@ -30,9 +31,12 @@ const PerformanceAdsLab = lazy(() => import('@/components/dashboard/PerformanceA
 const NeuralAudioMatrix = lazy(() => import('@/components/dashboard/NeuralAudioMatrix'));
 const VisualAssetMatrix = lazy(() => import('@/components/dashboard/VisualAssetMatrix'));
 const SonicLab = lazy(() => import('@/components/dashboard/SonicLab'));
-const CommercialAdLab = lazy(() => import('@/components/dashboard/CommercialAdLab'));
-const CommercialVideoMatrix = lazy(() => import('@/components/dashboard/CommercialVideoMatrix'));
-const TaskReplayLab = lazy(() => import('@/components/dashboard/TaskReplayLab'));
+const StudioLab = lazy(() => import('@/components/dashboard/StudioLab'));
+const CommercialLab = lazy(() => import('@/components/dashboard/CommercialLab'));
+const ExecutiveDemo = lazy(() => import('@/components/dashboard/ExecutiveDemo'));
+const SubscriptionPlans = lazy(() => import('@/components/dashboard/SubscriptionPlans'));
+
+const CommandHub = lazy(() => import('@/components/dashboard/CommandHub'));
 const EtherAgentWelcome = lazy(() => import('@/components/dashboard/EtherAgentWelcome'));
 
 const STORAGE_KEY = 'etheragent_navigation';
@@ -51,9 +55,9 @@ const ComponentLoader = () => (
 );
 
 const navItems: { id: ViewId; path: string; icon: React.ReactNode; label: string; sub: string }[] = [
-  { id: 'home', path: '/', icon: <Home size={18} />, label: 'Hub', sub: 'Command Central' },
-  { id: 'nexus', path: '/nexus', icon: <BrainCircuit size={18} />, label: 'Nexus', sub: 'Brand Ingestion' },
-  { id: 'social', path: '/social', icon: <Smartphone size={18} />, label: 'Social Lab', sub: 'AI Campaign Studio' },
+  { id: 'home', path: '/dashboard', icon: <Home size={18} />, label: 'Hub', sub: 'Command Central' },
+  { id: 'nexus', path: '/dashboard/nexus', icon: <BrainCircuit size={18} />, label: 'Nexus', sub: 'Brand Ingestion' },
+  { id: 'social', path: '/dashboard/social', icon: <Smartphone size={18} />, label: 'Social Lab', sub: 'AI Campaign Studio' },
 ];
 
 const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
@@ -132,7 +136,7 @@ const DashboardLayout = ({ children, location }: { children: React.ReactNode; lo
   }, []);
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full bg-black text-white font-sans overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-screen w-full bg-black text-white font-sans overflow-y-auto">
       {/* FONDO ESPACIAL GLOBAL */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-600/20 blur-[120px] rounded-full mix-blend-screen animate-pulse" />
@@ -190,48 +194,35 @@ export default function Index() {
   const handleSelectAvatar = (avatar: Avatar) => {
     setSelectedAvatar(avatar);
     trackAnalytics('/broadcaster');
-    navigate('/broadcaster');
+    navigate('/dashboard/broadcaster');
   };
 
   return (
     <DashboardLayout location={location.pathname}>
       <Routes>
-        {/* PUBLIC ROUTES */}
-        <Route path="/" element={<TaskReplayLab />} />
-        <Route path="/replay" element={<TaskReplayLab />} />
-
-        {/* PROTECTED ROUTES */}
-        <Route path="/hub" element={<ProtectedRoute><EtherAgentWelcome /></ProtectedRoute>} />
-        <Route path="/nexus" element={<ProtectedRoute><NexusDashboard /></ProtectedRoute>} />
-        <Route path="/social" element={<ProtectedRoute><SocialLab /></ProtectedRoute>} />
-        <Route path="/ooh" element={<ProtectedRoute><VirtualOOHLab /></ProtectedRoute>} />
-        <Route path="/ads" element={<ProtectedRoute><PerformanceAdsLab /></ProtectedRoute>} />
-        <Route path="/spaces" element={<ProtectedRoute><SystemSpaces /></ProtectedRoute>} />
-        <Route path="/engine" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
-        <Route path="/intelligence" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
-        <Route
-          path="/influencers"
-          element={
-            <ProtectedRoute>
-              <InfluencerRoster
-                selectedCategory={selectedCategory}
-                setSelectedCategory={setSelectedCategory}
-                onSelectAvatar={handleSelectAvatar}
-              />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/broadcaster" element={<ProtectedRoute><BroadcasterLab selectedAvatar={selectedAvatar} /></ProtectedRoute>} />
-        <Route path="/templates" element={<ProtectedRoute><TemplateVault /></ProtectedRoute>} />
-        <Route path="/telemetry" element={<ProtectedRoute><ActiveTelemetry /></ProtectedRoute>} />
-        <Route path="/pricing" element={<ProtectedRoute><PricingPlans /></ProtectedRoute>} />
-        <Route path="/deployment" element={<ProtectedRoute><DeploymentSequence /></ProtectedRoute>} />
-        <Route path="/exchange" element={<ProtectedRoute><GlobalExchange /></ProtectedRoute>} />
-        <Route path="/audio-matrix" element={<ProtectedRoute><NeuralAudioMatrix /></ProtectedRoute>} />
-        <Route path="/visual-matrix" element={<ProtectedRoute><VisualAssetMatrix /></ProtectedRoute>} />
-        <Route path="/sonic" element={<ProtectedRoute><SonicLab /></ProtectedRoute>} />
-        <Route path="/commercial" element={<ProtectedRoute><CommercialAdLab /></ProtectedRoute>} />
-        <Route path="/commercial-matrix" element={<ProtectedRoute><CommercialVideoMatrix /></ProtectedRoute>} />
+        <Route path="/" element={<CommandHub />} />
+        <Route path="hub" element={<ProtectedRoute><EtherAgentWelcome /></ProtectedRoute>} />
+        <Route path="nexus" element={<ProtectedRoute><NexusDashboard /></ProtectedRoute>} />
+        <Route path="social" element={<ProtectedRoute><SocialLab /></ProtectedRoute>} />
+        <Route path="ooh" element={<ProtectedRoute><VirtualOOHLab /></ProtectedRoute>} />
+        <Route path="ads" element={<ProtectedRoute><PerformanceAdsLab /></ProtectedRoute>} />
+        <Route path="spaces" element={<ProtectedRoute><SystemSpaces /></ProtectedRoute>} />
+        <Route path="engine" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
+        <Route path="intelligence" element={<ProtectedRoute><Intelligence /></ProtectedRoute>} />
+        <Route path="influencers" element={<ProtectedRoute><InfluencerRoster selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onSelectAvatar={handleSelectAvatar} /></ProtectedRoute>} />
+        <Route path="broadcaster" element={<ProtectedRoute><BroadcasterLab selectedAvatar={selectedAvatar} /></ProtectedRoute>} />
+        <Route path="templates" element={<ProtectedRoute><TemplateVault /></ProtectedRoute>} />
+        <Route path="telemetry" element={<ProtectedRoute><ActiveTelemetry /></ProtectedRoute>} />
+        <Route path="pricing" element={<ProtectedRoute><PricingPlans /></ProtectedRoute>} />
+        <Route path="deployment" element={<ProtectedRoute><DeploymentSequence /></ProtectedRoute>} />
+        <Route path="exchange" element={<ProtectedRoute><GlobalExchange /></ProtectedRoute>} />
+        <Route path="audio-matrix" element={<ProtectedRoute><NeuralAudioMatrix /></ProtectedRoute>} />
+        <Route path="visual-matrix" element={<ProtectedRoute><VisualAssetMatrix /></ProtectedRoute>} />
+        <Route path="sonic" element={<ProtectedRoute><SonicLab /></ProtectedRoute>} />
+        <Route path="studio-lab" element={<ProtectedRoute><StudioLab /></ProtectedRoute>} />
+        <Route path="commercial-lab" element={<ProtectedRoute><CommercialLab /></ProtectedRoute>} />
+        <Route path="executive-demo" element={<ProtectedRoute><ExecutiveDemo /></ProtectedRoute>} />
+        <Route path="subscription" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
       </Routes>
     </DashboardLayout>
   );

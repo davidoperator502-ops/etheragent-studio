@@ -176,18 +176,19 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
                     'Authorization': `Bearer ${GROQ_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.1-70b-versatile',
+                    model: 'llama-3.1-8b-instant',
                     messages: [
                         { role: 'system', content: SYSTEM_PROMPT },
                         { role: 'user', content: text },
                     ],
-                    response_format: { type: 'json_object' },
                     temperature: 0.1,
                     max_tokens: 150,
                 }),
             });
 
             if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('[OmniAgent] Groq API Error:', response.status, errorData);
                 throw new Error(`Groq API error: ${response.status}`);
             }
 
@@ -198,7 +199,17 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
                 throw new Error('Respuesta vacía del LLM');
             }
 
-            const llmResponse: LLMRouterResponse = JSON.parse(content);
+            let llmResponse: LLMRouterResponse;
+            try {
+                llmResponse = JSON.parse(content);
+            } catch {
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    llmResponse = JSON.parse(jsonMatch[0]);
+                } else {
+                    throw new Error('No se pudo parsear la respuesta del LLM');
+                }
+            }
             console.log('[OmniAgent] 🧠 LLM Response:', llmResponse);
 
             executeAction(llmResponse.route, llmResponse.speech);

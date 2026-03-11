@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
+
 export interface SocialMetrics {
     platform: string;
     duration: string;
@@ -8,17 +10,25 @@ export interface SocialMetrics {
     hookType: string;
 }
 
+const MOCK_SOCIAL_DATA: SocialMetrics = {
+    platform: 'TikTok',
+    duration: '6s',
+    retention: '87%',
+    hookType: 'Onda de Choque'
+};
+
 export function useSocialMetrics() {
-    const [socialData, setSocialData] = useState<SocialMetrics>({
-        platform: 'TikTok',
-        duration: '6s',
-        retention: '87%',
-        hookType: 'Onda de Choque'
-    });
+    const [socialData, setSocialData] = useState<SocialMetrics>(MOCK_SOCIAL_DATA);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         async function fetchLatestSocialData() {
+            if (USE_MOCK) {
+                setSocialData(MOCK_SOCIAL_DATA);
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 setIsLoading(true);
 

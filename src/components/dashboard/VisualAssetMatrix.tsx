@@ -1,188 +1,154 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  Image, Copy, Upload, CheckCircle2,
-  Video, Smartphone, MonitorPlay, Target, Palette, Briefcase
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabaseClient';
+import { Upload, Loader2, CheckCircle2, Image as ImageIcon, Target, Globe, Activity, DollarSign, Layout, MonitorPlay, Film, Smartphone } from 'lucide-react';
 
-const VISUAL_REQUIREMENTS = [
-  {
-    id: 'social_video_1',
-    module: 'Social Video',
-    icon: <Smartphone size={18} className="text-emerald-500" />,
-    agent: 'Valeria M. (Growth Hacker)',
-    context: 'Fondo Viral para TikTok/Reels/Shorts',
-    ratio: '9:16',
-    prompt: "--v 6.0 --ar 9:16 --style raw cinematic POV, looking up at a massive, highly intricate holographic neural network physically compiling a photorealistic digital human face in real-time. The environment is a pitch-black, ultra-modern glass server room. Intricate, glowing emerald green UI elements, nodes, and data streams floating in the air. The typography 'EtherAgent OS' is subtly integrated into the floating UI glass panels. Hyperrealistic, 8k resolution, shot on ARRI Alexa 65, 35mm lens, f/1.8, moody volumetric lighting, dense atmospheric fog, dramatic depth of field, sharp focus on the digital face, glowing particle effects --c 15 --stylize 200",
-    color: 'emerald',
-    accept: 'video/mp4,video/quicktime',
-    formatLabel: 'SUBIR VIDEO (.MP4)'
-  },
-  {
-    id: 'social_static_1',
-    module: 'Social Static',
-    icon: <Briefcase size={18} className="text-cyan-500" />,
-    agent: 'Marcus V. (High-Ticket Closer)',
-    context: 'Imagen de Autoridad para LinkedIn / X',
-    ratio: '4:5',
-    prompt: "--v 6.0 --ar 4:5 interior design photography, ultra-premium C-suite corporate boardroom. In the center, a glowing, translucent cyan smart-contract hologram projecting upwards from a sleek, polished obsidian conference table. The intricate hologram displays a massive MRR financial growth chart, global nodes, and data visualizations. The background features a deeply out-of-focus, sprawling New York City skyline at midnight through floor-to-ceiling windows. Dark mode luxury aesthetic, cinematic rim lighting, photorealistic, 8k, hyper-detailed textures, ray-traced reflections on the obsidian table, shot on medium format Hasselblad, f/2.8 --stylize 300",
-    color: 'cyan',
-    accept: 'image/png,image/jpeg,image/webp',
-    formatLabel: 'SUBIR IMAGEN (.PNG/.JPG)'
-  },
-  {
-    id: 'ooh_viktor_1',
-    module: 'Virtual OOH',
-    icon: <MonitorPlay size={18} className="text-cyan-500" />,
-    agent: 'Viktor S. (Spatial Architect)',
-    context: 'Valla 21:9 para Metaverso / UEFN',
-    ratio: '21:9',
-    prompt: "--v 6.0 --ar 21:9 epic wide master shot, a massive panoramic digital billboard dominating a photorealistic, dystopian cyberpunk metropolis at night. The glowing billboard displays a pristine, hyper-detailed synthetic AI agent face with piercing, glowing cyan eyes looking down at the city. Bold, integrated typography reads: 'CEOS DONT EDIT. THEY COMPILE.' Ray-traced neon reflections bouncing off rain-slicked wet asphalt. Cinematic lighting, dense volumetric smog, flying neon vehicles blurred in motion, Unreal Engine 5 render style, Octane Render, 8k, masterpiece, highly detailed architecture --c 20 --stylize 250",
-    color: 'cyan',
-    accept: 'image/png,image/jpeg',
-    formatLabel: 'SUBIR IMAGEN PANORÁMICA'
-  },
-  {
-    id: 'ads_kaelen_1',
-    module: 'Performance Ads',
-    icon: <Target size={18} className="text-violet-500" />,
-    agent: 'Kaelen R. (Conversion Architect)',
-    context: 'Anuncio de Retargeting Meta/LinkedIn',
-    ratio: '1:1',
-    prompt: "--v 6.0 --ar 1:1 extreme macro photography, a hyper-futuristic obsidian AI server processor core, pulsating with deep violet, magenta and amethyst bioluminescent light. Intricate liquid cooling tubes with glowing fluid flowing through them. The text 'EtherAgent OS - Neural Core' is elegantly and precisely engraved in sleek, minimalist typography on the brushed dark titanium metal casing. Pure pitch-black background, dramatic studio lighting, softbox reflections, hyper-detailed high-end commercial tech product shot, subsurface scattering, focus stacking, pristine clarity, 8k resolution --style raw --stylize 150",
-    color: 'violet',
-    accept: 'image/png,image/jpeg,video/mp4',
-    formatLabel: 'SUBIR ASSET DE CONVERSIÓN'
-  }
-];
+// ESTRUCTURA DE LOS ASSETS VISUALES POR MISIÓN
+const MISSION_ASSETS = {
+  ecommerce: [
+    { id: 'demo_ecommerce_hub', agent: 'Marcus', title: '1. Brand Core (Hub)', desc: 'Logo, render de producto o imagen abstracta de la marca.', icon: Layout },
+    { id: 'demo_ecommerce_social', agent: 'Valeria', title: '2. Viral Asset (Social)', desc: 'Video vertical (9:16) tipo TikTok / Reel.', icon: Smartphone },
+    { id: 'demo_ecommerce_ooh', agent: 'Viktor', title: '3. Spatial Ad (OOH)', desc: 'Imagen o video panorámico (21:9) en una valla o ciudad.', icon: MonitorPlay },
+    { id: 'demo_ecommerce_commercial', agent: 'Kaelen', title: '4. VSL Spot (Commercial)', desc: 'Video publicitario cinemático y pulido.', icon: Film }
+  ],
+  saas: [
+    { id: 'demo_saas_hub', agent: 'Marcus', title: '1. Brand Core (Hub)', desc: 'Dashboard oscuro, gráficas o logo de software B2B.', icon: Layout },
+    { id: 'demo_saas_social', agent: 'Valeria', title: '2. Viral Asset (Social)', desc: 'Video vertical o post cuadrado tipo LinkedIn.', icon: Smartphone },
+    { id: 'demo_saas_ooh', agent: 'Viktor', title: '3. Spatial Ad (OOH)', desc: 'Valla publicitaria en un aeropuerto o distrito financiero.', icon: MonitorPlay },
+    { id: 'demo_saas_commercial', agent: 'Kaelen', title: '4. VSL Spot (Commercial)', desc: 'Video documental corporativo o demo de software.', icon: Film }
+  ],
+  fintech: [
+    { id: 'demo_fintech_hub', agent: 'Marcus', title: '1. Brand Core (Hub)', desc: 'Tarjeta metálica, bóveda digital o logo bancario.', icon: Layout },
+    { id: 'demo_fintech_social', agent: 'Valeria', title: '2. Viral Asset (Social)', desc: 'Video de referral o unboxing de tarjeta.', icon: Smartphone },
+    { id: 'demo_fintech_ooh', agent: 'Viktor', title: '3. Spatial Ad (OOH)', desc: 'Holograma o valla en avenida principal de la ciudad.', icon: MonitorPlay },
+    { id: 'demo_fintech_commercial', agent: 'Kaelen', title: '4. VSL Spot (Commercial)', desc: 'Spot comercial generando confianza e invitando a descargar.', icon: Film }
+  ],
+  web3: [
+    { id: 'demo_web3_hub', agent: 'Marcus', title: '1. Brand Core (Hub)', desc: 'Logo 3D, token, NFT o gráfica ciberpunk.', icon: Layout },
+    { id: 'demo_web3_social', agent: 'Valeria', title: '2. Viral Asset (Social)', desc: 'Video hype, cuenta regresiva o filtración simulada.', icon: Smartphone },
+    { id: 'demo_web3_ooh', agent: 'Viktor', title: '3. Spatial Ad (OOH)', desc: 'Proyección sobre un edificio con coordenadas secretas.', icon: MonitorPlay },
+    { id: 'demo_web3_commercial', agent: 'Kaelen', title: '4. VSL Spot (Commercial)', desc: 'Tráiler épico de lanzamiento de colección o token.', icon: Film }
+  ],
+  landing: [
+    { id: 'landing_social', agent: 'Valeria', title: 'Social Viral', desc: 'Video vertical (9:16) con audio para landing page.', icon: Smartphone },
+    { id: 'landing_ooh', agent: 'Viktor', title: 'Valla OOH', desc: 'Video panorámico (21:9) sin audio para landing.', icon: MonitorPlay },
+    { id: 'landing_commercial', agent: 'Kaelen', title: 'Cinematic', desc: 'Video horizontal (16:9) de cierre para landing.', icon: Film }
+  ]
+};
 
 export default function VisualAssetMatrix() {
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, boolean>>({});
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [loadingIds, setLoadingIds] = useState<Record<string, boolean>>({});
+  const [uploadedAssets, setUploadedAssets] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<'ecommerce' | 'saas' | 'fintech' | 'web3' | 'landing'>('ecommerce');
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+  useEffect(() => {
+    const checkExistingAssets = async () => {
+      const { data } = await supabase.from('visual_assets').select('id, url').like('id', 'demo_%');
+      if (data) {
+        const uploaded: Record<string, string> = {};
+        data.forEach(item => { if (item.url) uploaded[item.id] = item.url; });
+        setUploadedAssets(uploaded);
+      }
+    };
+    checkExistingAssets();
+  }, []);
 
-  const handleFileUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setTimeout(() => {
-        setUploadedFiles(prev => ({ ...prev, [id]: true }));
-      }, 800);
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, assetId: string) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      setLoadingIds(prev => ({ ...prev, [assetId]: true }));
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${assetId}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage.from('visual-assets').upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('visual-assets').getPublicUrl(fileName);
+      await supabase.from('visual_assets').upsert({ id: assetId, url: publicUrl, updated_at: new Date() });
+
+      setUploadedAssets(prev => ({ ...prev, [assetId]: publicUrl }));
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al subir el asset visual.');
+    } finally {
+      setLoadingIds(prev => ({ ...prev, [assetId]: false }));
     }
   };
 
-  return (
-    <div className="flex-1 p-8 h-screen overflow-y-auto">
-      <div className="mb-10">
-        <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">
-          <Palette size={14} className="text-zinc-400" /> Visual Synthesis Control
+  const AssetCard = ({ asset }: { asset: any }) => {
+    const isUploaded = !!uploadedAssets[asset.id];
+    const assetUrl = uploadedAssets[asset.id];
+    const isVideo = assetUrl && (assetUrl.includes('.mp4') || assetUrl.includes('.mov') || assetUrl.includes('.webm'));
+
+    return (
+      <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl flex flex-col relative group hover:border-emerald-500/20 transition-all overflow-hidden">
+        
+        <div className="h-40 bg-black relative border-b border-white/5 flex items-center justify-center overflow-hidden">
+          {isUploaded ? (
+            isVideo ? (
+              <video src={assetUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-80" />
+            ) : (
+              <img src={assetUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+            )
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-zinc-600">
+              <asset.icon size={32} className="opacity-50" />
+              <span className="font-mono text-[10px] uppercase">Esperando Archivo</span>
+            </div>
+          )}
+          
+          <div className="absolute top-3 right-3 z-10">
+            {isUploaded ? (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-black/60 backdrop-blur border border-emerald-500/30 text-emerald-500 text-[9px] font-mono uppercase"><CheckCircle2 size={10} /> LISTO</div>
+            ) : (
+              <div className="px-2 py-1 rounded-full bg-black/60 backdrop-blur border border-white/10 text-zinc-400 text-[9px] font-mono uppercase">SIN MEDIA</div>
+            )}
+          </div>
         </div>
-        <h1 className="text-3xl font-bold text-white uppercase tracking-tight">
-          Visual Asset <span className="font-light text-zinc-600">Matrix</span>
-        </h1>
-        <p className="text-zinc-400 mt-2 font-mono text-sm">
-          Panel de inyección de assets visuales (Imágenes/Videos). Copia el prompt para Midjourney/Runway, genera el asset y súbelo para inyectarlo en los agentes.
-        </p>
+
+        <div className="p-5 flex flex-col flex-1">
+          <h3 className="text-sm font-bold text-white mb-1">
+            <span className="text-zinc-500">{asset.title}</span>
+          </h3>
+          <p className="text-xs text-zinc-400 mb-4 line-clamp-2">{asset.desc}</p>
+          
+          <div className="mt-auto">
+            <label className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${isUploaded ? 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-[#111] hover:bg-zinc-900 border-white/10 text-white'}`}>
+              <input type="file" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, asset.id)} disabled={loadingIds[asset.id]} className="hidden" />
+              {loadingIds[asset.id] ? <><Loader2 size={14} className="animate-spin" /> Procesando...</> : <><Upload size={14} /> {isUploaded ? 'REEMPLAZAR ARCHIVO' : 'SUBIR ASSET'}</>}
+            </label>
+          </div>
+        </div>
       </div>
+    );
+  };
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20">
-        {VISUAL_REQUIREMENTS.map((req) => (
-          <motion.div
-            key={req.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-zinc-950/60 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-6 shadow-2xl flex flex-col relative overflow-hidden"
-          >
-            <div className={`absolute -right-20 -top-20 w-64 h-64 bg-${req.color}-500/10 blur-[80px] rounded-full pointer-events-none`} />
+  return (
+    <div className="flex flex-col h-full min-h-screen w-full bg-[#050505] text-white p-4 md:p-8 pb-32 overflow-y-auto">
+      <div className="max-w-6xl mx-auto w-full">
+        <header className="mb-12">
+          <div className="flex items-center gap-2 mb-2">
+            <ImageIcon className="text-emerald-500" size={16} />
+            <span className="text-zinc-500 font-mono text-xs uppercase tracking-widest">ASSET DEPLOYMENT CONTROL</span>
+          </div>
+          <h1 className="text-3xl font-black tracking-widest uppercase text-white mb-4">VISUAL <span className="text-zinc-500">MATRIX</span></h1>
+          <p className="text-zinc-400 text-sm">Sube los videos e imágenes (Assets) que se proyectarán en los celulares de la Executive Demo.</p>
+        </header>
 
-            <div className="flex justify-between items-start mb-6 relative z-10">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 bg-zinc-900 border border-${req.color}-500/30 rounded-xl flex items-center justify-center`}>
-                  {req.icon}
-                </div>
-                <div>
-                  <h3 className="text-white font-bold">{req.module}</h3>
-                  <p className="text-xs text-zinc-500 font-mono uppercase">{req.agent}</p>
-                </div>
-              </div>
+        <div className="mb-8">
+          <div className="flex flex-wrap gap-2 bg-[#111] p-1 rounded-xl w-fit border border-white/5">
+            <button onClick={() => setActiveTab('ecommerce')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'ecommerce' ? 'bg-emerald-500/20 text-emerald-500' : 'text-zinc-500 hover:text-white'}`}><Target size={14}/> E-Commerce</button>
+            <button onClick={() => setActiveTab('saas')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'saas' ? 'bg-blue-500/20 text-blue-500' : 'text-zinc-500 hover:text-white'}`}><Globe size={14}/> B2B SaaS</button>
+            <button onClick={() => setActiveTab('fintech')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'fintech' ? 'bg-purple-500/20 text-purple-500' : 'text-zinc-500 hover:text-white'}`}><Activity size={14}/> Fintech</button>
+            <button onClick={() => setActiveTab('web3')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'web3' ? 'bg-orange-500/20 text-orange-500' : 'text-zinc-500 hover:text-white'}`}><DollarSign size={14}/> Web3</button>
+            <button onClick={() => setActiveTab('landing')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'landing' ? 'bg-white/20 text-white' : 'text-zinc-500 hover:text-white'}`}><Layout size={14}/> Landing</button>
+          </div>
+        </div>
 
-              {uploadedFiles[req.id] ? (
-                <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase">
-                  <CheckCircle2 size={12} /> Asset Visual Inyectado
-                </div>
-              ) : (
-                <div className="px-3 py-1 bg-zinc-900 border border-zinc-800 text-zinc-500 rounded-full flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase">
-                  <Image size={12} /> Esperando Asset
-                </div>
-              )}
-            </div>
-
-            <div className="bg-black/50 border border-zinc-800 rounded-xl p-4 mb-4 flex-1 relative z-10">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest">
-                  Contexto: {req.context}
-                </span>
-                <span className="text-[10px] text-zinc-600 font-mono uppercase bg-zinc-900 px-2 py-0.5 rounded">
-                  {req.ratio}
-                </span>
-              </div>
-              <p className="text-zinc-300 text-sm italic leading-relaxed">"{req.prompt}"</p>
-            </div>
-
-            <div className="relative z-10 mt-auto">
-              <div className="flex gap-2 mb-3">
-                <button
-                  onClick={() => handleCopy(req.prompt, req.id)}
-                  className="flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-white/30 transition-all flex items-center justify-center gap-2 text-xs font-bold"
-                >
-                  {copiedId === req.id ? (
-                    <>
-                      <CheckCircle2 size={14} className="text-emerald-500" />
-                      <span className="text-emerald-500">COPIADO</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      <span>COPIAR PROMPT</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <input
-                type="file"
-                accept={req.accept}
-                className="hidden"
-                id={`upload-${req.id}`}
-                onChange={(e) => handleFileUpload(req.id, e)}
-              />
-              <label
-                htmlFor={`upload-${req.id}`}
-                className={`w-full py-4 rounded-xl border border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all ${uploadedFiles[req.id]
-                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500 hover:bg-emerald-500/20'
-                    : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-white/30 hover:text-white'
-                  }`}
-              >
-                {uploadedFiles[req.id] ? (
-                  <>
-                    <CheckCircle2 size={18} />
-                    <span className="font-bold text-sm">✓ ASSET VISUAL INYECTADO</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={18} />
-                    <span className="font-bold text-sm">{req.formatLabel}</span>
-                  </>
-                )}
-              </label>
-            </div>
-
-          </motion.div>
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {MISSION_ASSETS[activeTab].map(asset => <AssetCard key={asset.id} asset={asset} />)}
+        </div>
       </div>
     </div>
   );

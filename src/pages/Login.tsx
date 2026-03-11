@@ -24,7 +24,7 @@ export default function Login() {
                 if (error) throw error;
 
                 // Si es exitoso, enviamos al usuario al Command Hub
-                navigate('/hub');
+                navigate('/dashboard/hub');
             } else {
                 // REGISTRO DE NUEVO NODO
                 const { data, error } = await supabase.auth.signUp({
@@ -39,7 +39,7 @@ export default function Login() {
                 if (error) throw error;
 
                 if (data.session) {
-                    navigate('/hub');
+                    navigate('/dashboard/hub');
                 } else {
                     setErrorMsg('Revisa tu correo para verificar la cuenta. (Depende de tu config en Supabase)');
                 }

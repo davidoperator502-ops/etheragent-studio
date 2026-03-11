@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
+
 export interface OOHMetrics {
     location: string;
     resolution: string;
@@ -9,17 +11,25 @@ export interface OOHMetrics {
     traffic: string;
 }
 
+const MOCK_OOH_DATA: OOHMetrics = {
+    location: 'Neo-Shibuya',
+    resolution: 'Render 8K',
+    format: 'Holograma 3D',
+    traffic: 'Alto Volumen'
+};
+
 export function useOOHMetrics() {
-    const [oohData, setOohData] = useState<OOHMetrics>({
-        location: 'Neo-Shibuya',
-        resolution: 'Render 8K',
-        format: 'Holograma 3D',
-        traffic: 'Alto Volumen'
-    });
+    const [oohData, setOohData] = useState<OOHMetrics>(MOCK_OOH_DATA);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         async function fetchLatestOOHData() {
+            if (USE_MOCK) {
+                setOohData(MOCK_OOH_DATA);
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 setIsLoading(true);
 

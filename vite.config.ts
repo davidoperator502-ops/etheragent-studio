@@ -21,28 +21,34 @@ export default defineConfig(({ mode }) => ({
       devOptions: {
         enabled: true,
       },
-      includeAssets: ['favicon.ico', 'robots.txt'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'icon-192x192.png', 'icon-512x512.png'],
       manifest: {
-        name: 'EtherAgent OS Studio',
+        name: 'EtherAgent OS v1.2',
         short_name: 'EtherAgent',
-        description: 'EtherAgent OS - Social Authority Platform',
+        description: 'Neural Marketing Operating System',
         theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',
+        scope: '/',
+        start_url: '/',
+        orientation: 'portrait-primary',
         icons: [
           {
-            src: '/icon-192.png',
+            src: '/icon-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
-            src: '/icon-512.png',
+            src: '/icon-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       },
       workbox: {
+        navigateFallback: undefined,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
@@ -70,6 +76,17 @@ export default defineConfig(({ mode }) => ({
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/njhifpbnrbbhbmwgedtz\.supabase\.co\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24
               }
             }
           }

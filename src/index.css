@@ -3,17 +3,23 @@
 @tailwind utilities;
 
 @layer base {
-  :root, .dark {
+
+  :root,
+  .dark {
     /* Core Background & Foreground (Absolute Dark) */
-    --background: 240 10% 4%; /* #0a0a0c - Onyx Black */
+    --background: 240 10% 4%;
+    /* #0a0a0c - Onyx Black */
     --foreground: 0 0% 100%;
 
     /* Emerald Branding (Primary) */
-    --primary: 152 76% 53%; /* Emerald 500 */
-    --primary-foreground: 240 10% 4%; /* Black text on emerald buttons */
+    --primary: 152 76% 53%;
+    /* Emerald 500 */
+    --primary-foreground: 240 10% 4%;
+    /* Black text on emerald buttons */
 
     /* Glassmorphism Surfaces */
-    --card: 240 5% 11%; /* #1C1C1E */
+    --card: 240 5% 11%;
+    /* #1C1C1E */
     --card-foreground: 0 0% 100%;
     --popover: 240 5% 11%;
     --popover-foreground: 0 0% 100%;
@@ -25,11 +31,14 @@
     --accent-foreground: 0 0% 100%;
 
     /* Borders & Inputs */
-    --border: 0 0% 15%; /* Subtle white/gray border */
+    --border: 0 0% 15%;
+    /* Subtle white/gray border */
     --input: 0 0% 15%;
-    --ring: 152 76% 53%; /* Emerald focus rings */
+    --ring: 152 76% 53%;
+    /* Emerald focus rings */
 
-    --radius: 1.5rem; /* Rounding for standard components */
+    --radius: 1.5rem;
+    /* Rounding for standard components */
 
     --sidebar-background: 0 0% 7%;
     --sidebar-foreground: 0 0% 100%;
@@ -46,6 +55,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground antialiased selection:bg-emerald-500/30 overflow-hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
@@ -53,19 +63,25 @@
 }
 
 @layer utilities {
+
   /* Hide scrollbar for clean UI but keep functionality */
   .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
+
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
+    /* Chrome, Safari and Opera */
   }
 
   /* Ocultar scrollbars pero mantener la funcionalidad */
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -79,7 +95,58 @@
   /* Cybernetic Grid Background */
   .bg-grid-pattern {
     background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
     background-size: 4rem 4rem;
+  }
+
+  /* Efecto de Aberración Cromática y Glitch Sutil */
+  .cinematic-lens {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cinematic-lens::before,
+  .cinematic-lens::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    background-size: cover;
+    background-position: center;
+    mix-blend-mode: screen;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* Desfase de color rojo */
+  .cinematic-lens::before {
+    left: 2px;
+    filter: hue-rotate(90deg) blur(1px);
+    animation: lens-drift 4s infinite alternate;
+  }
+
+  /* Desfase de color azul */
+  .cinematic-lens::after {
+    left: -2px;
+    filter: hue-rotate(-90deg) blur(1px);
+    animation: lens-drift 4s infinite alternate-reverse;
+  }
+
+  @keyframes lens-drift {
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(1px);
+    }
+  }
+
+  /* Efecto Bloom (Brillo en las altas luces) */
+  .bloom-layer {
+    filter: brightness(1.2) contrast(1.1) blur(15px);
+    mix-blend-mode: plus-lighter;
+    opacity: 0.4;
+    pointer-events: none;
   }
 }

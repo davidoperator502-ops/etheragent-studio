@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { useGroqQueue } from '../../hooks/useGroqQueue';
 import { api } from '../../services/api';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '../../hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import type { SystemFlow as SystemFlowType, Avatar } from '../../types';

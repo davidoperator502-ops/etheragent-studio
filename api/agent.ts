@@ -10,6 +10,9 @@ export default async function handler(req: Request) {
     try {
         const { prompt, userId } = await req.json();
 
+        console.log("--- INICIANDO PETICIÓN A MARCUS ---");
+        console.log("Prompt recibido:", prompt);
+
         if (!process.env.VITE_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.GROQ_API_KEY) {
             throw new Error('Missing environment variables.');
         }
@@ -48,12 +51,18 @@ export default async function handler(req: Request) {
             temperature: 0.2, // Baja temperatura para respuestas analíticas y precisas
         });
 
+        console.log("Tokens usados:", chatCompletion.usage?.total_tokens);
+
         return new Response(JSON.stringify({ response: chatCompletion.choices[0]?.message?.content }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
 
     } catch (error: any) {
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+        console.error("ERROR CRÍTICO DE RED:", error);
+        if (error.status === 429) {
+            console.error("ERROR DE GROQ (Rate Limit):", error.message);
+        }
+        return new Response(JSON.stringify({ error: error.message || "Fallo en el enlace neuronal" }), { status: error.status || 500 });
     }
 }

@@ -5,6 +5,9 @@ import { useVoice } from '@/context/GlobalVoiceContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import CampaignArchive from '@/components/CampaignArchive';
+import { getCachedResponse, setCachedResponse, clearAICache } from '@/lib/aiCache';
+import { RotateCcw, Bell, BellOff } from 'lucide-react';
+import { useNotifications } from '@/hooks/useNotifications';
 
 // ─── SUB-COMPONENTE AISLADO: Evita que el Command Hub completo se re-renderice por cada letra ───
 const TypewriterText = ({ text }: { text: string }) => {
@@ -110,6 +113,7 @@ export default function EtherAgentWelcome({ isDemoMode = false }: WelcomeProps) 
     const { isListening, startListening, stopListening, transcript } = useVoice();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { permission, requestPermission } = useNotifications();
 
     // LA LÓGICA DEL FANTASMA (Auto-escritura en demo)
     useEffect(() => {
@@ -141,6 +145,11 @@ export default function EtherAgentWelcome({ isDemoMode = false }: WelcomeProps) 
 
         await new Promise(resolve => setTimeout(resolve, 600));
         navigate(route, { state: { incomingPrompt: moduleText } });
+    };
+
+    const handleClearMemory = () => {
+        clearAICache();
+        setAiResponse("Memoria local purgada. Estoy listo para procesar nuevos flujos de datos, Davicho. 🦅");
     };
 
     // ENVÍO DESDE LA BARRA DE TEXTO/VOZ (Enrutamiento inteligente o Consulta LLM)
@@ -176,6 +185,20 @@ export default function EtherAgentWelcome({ isDemoMode = false }: WelcomeProps) 
         setIsThinking(true);
         setAiResponse('');
 
+        // --- EL ESCUDO DE AHORRO ---
+        const cached = getCachedResponse(textToProcess);
+        if (cached) {
+            console.log("⚡ Marcus: Respuesta recuperada del cache local (0 tokens usados)");
+            // Simulamos un pequeño delay de "pensamiento" para no romper la UX
+            setTimeout(() => {
+                setAiResponse(cached);
+                setIsThinking(false);
+                setPrompt('');
+                if (isListening) stopListening();
+            }, 500);
+            return; // Salimos de la función, no hay llamada a la API
+        }
+
         try {
             const res = await fetch('/api/agent', {
                 method: 'POST',
@@ -189,6 +212,8 @@ export default function EtherAgentWelcome({ isDemoMode = false }: WelcomeProps) 
             const data = await res.json();
             if (data.response) {
                 setAiResponse(data.response);
+                // GUARDAMOS EN CACHE PARA LA PRÓXIMA VEZ
+                setCachedResponse(textToProcess, data.response);
             } else {
                 setAiResponse("ERROR: Ruptura en el enlace cognitivo con Groq.");
             }
@@ -238,14 +263,28 @@ export default function EtherAgentWelcome({ isDemoMode = false }: WelcomeProps) 
                     )}
                 </motion.div>
 
-                {/* TÍTULO */}
-                <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-10">
+                {/* TÍTULO Y NOTIFICACIONES */}
+                <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-10 relative flex flex-col items-center">
                     <h1 className="text-2xl md:text-4xl font-black text-white tracking-widest mb-2 uppercase">
                         EtherAgent <span className="text-emerald-500">OS</span>
                     </h1>
-                    <p className="text-zinc-500 font-mono text-xs md:text-sm tracking-[0.2em] uppercase">
+                    <p className="text-zinc-500 font-mono text-xs md:text-sm tracking-[0.2em] uppercase mb-4">
                         Terminal de Comando En Línea
                     </p>
+
+                    {/* NOTIFICACIONES SWITCH */}
+                    <button
+                        onClick={requestPermission}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${permission === 'granted'
+                                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                                : 'border-orange-500/30 bg-orange-500/10 text-orange-400 animate-pulse'
+                            }`}
+                    >
+                        {permission === 'granted' ? <Bell size={14} /> : <BellOff size={14} />}
+                        <span className="text-[10px] font-mono tracking-widest uppercase">
+                            {permission === 'granted' ? 'Link Activo' : 'Activar Alertas'}
+                        </span>
+                    </button>
                 </motion.div>
 
                 {/* GRID BENTO DE ACCIONES RÁPIDAS (Todos los laboratorios) */}
@@ -364,6 +403,16 @@ export default function EtherAgentWelcome({ isDemoMode = false }: WelcomeProps) 
                         )}
                     </button>
 
+                    <button
+                        type="button"
+                        onClick={handleClearMemory}
+                        title="Limpiar memoria de Marcus"
+                        disabled={isDemoMode || isThinking}
+                        className="absolute left-[3.2rem] p-3 text-zinc-600 hover:text-red-400 transition-colors group disabled:opacity-50 z-20"
+                    >
+                        <RotateCcw size={18} className="group-active:rotate-[-180deg] transition-transform duration-500" />
+                    </button>
+
                     <input
                         type="text"
                         value={displayValue}
@@ -375,9 +424,9 @@ export default function EtherAgentWelcome({ isDemoMode = false }: WelcomeProps) 
                                 isThinking ? "Procesando telemetría..." :
                                     "Comanda a Marcus (Ej: Resume mis campañas)..."
                         }
-                        className={`w-full backdrop-blur-3xl rounded-2xl md:rounded-full py-4 pl-14 pr-12 text-sm md:text-base outline-none transition-all shadow-inner disabled:opacity-50 ${isListening
-                                ? 'bg-red-900/20 border border-red-500/50 text-red-200 focus:border-red-500'
-                                : 'bg-zinc-900/90 border border-white/10 text-white focus:border-emerald-500/50 focus:bg-zinc-950'
+                        className={`w-full backdrop-blur-3xl rounded-2xl md:rounded-full py-4 pl-[6.5rem] pr-12 text-sm md:text-base outline-none transition-all shadow-inner disabled:opacity-50 ${isListening
+                            ? 'bg-red-900/20 border border-red-500/50 text-red-200 focus:border-red-500'
+                            : 'bg-zinc-900/90 border border-white/10 text-white focus:border-emerald-500/50 focus:bg-zinc-950'
                             }`}
                     />
 

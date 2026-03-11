@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import {
   Target, Send, CheckCircle2, Sparkles, Play, Pause,
   TrendingUp, DollarSign, MousePointer, BarChart3,
-  Smartphone, Heart, MessageCircle, Share2, MoreHorizontal
+  Smartphone, Heart, MessageCircle, Share2, MoreHorizontal, Loader2
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 import { usePerformanceMetrics } from '@/hooks/usePerformanceMetrics';
+import { useVoiceStore } from '@/store/useVoiceStore';
 
 const AGENT_KAELEN = {
   name: "Kaelen R.",
@@ -65,8 +68,40 @@ interface PerformanceAdsLabProps {
   isDemoMode?: boolean;
 }
 
-export default function PerformanceAdsLab({ isDemoMode = false }: PerformanceAdsLabProps) {
-  const { metrics, isLoading } = usePerformanceMetrics();
+export default function PerformanceAdsLab({ isDemoMode: propDemoMode = false }: PerformanceAdsLabProps) {
+  const location = useLocation();
+  const isDemo = propDemoMode || location.state?.isDemo === true;
+  
+  const { metrics, isLoading: metricsLoading } = usePerformanceMetrics();
+  const [adUrl, setAdUrl] = useState<string | null>(null);
+  const [assetLoading, setAssetLoading] = useState(true);
+  const { speak, stopSpeaking, isSpeaking } = useVoiceStore();
+
+  useEffect(() => {
+    const fetchAsset = async () => {
+      const { data } = await supabase
+        .from('visual_assets')
+        .select('url')
+        .eq('id', 'kaelen_ads_retargeting')
+        .single();
+        
+      if (data?.url) {
+        setAdUrl(data.url);
+      }
+      setAssetLoading(false);
+    };
+    fetchAsset();
+  }, []);
+
+  useEffect(() => {
+    if (isDemo) {
+      const kaelenWelcome = "Bienvenido al Performance Lab, CEO. Soy Kaelen, tu arquitecto de conversiones. Aquí optimizaremos tu ROAS con precisión quirúrgica. ¿Listo para inyectar presupuesto?";
+      
+      window.speechSynthesis.onvoiceschanged = () => speak(kaelenWelcome, "viktor");
+      if (window.speechSynthesis.getVoices().length > 0) speak(kaelenWelcome, "viktor");
+    }
+    return () => stopSpeaking();
+  }, [isDemo]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
@@ -98,7 +133,7 @@ export default function PerformanceAdsLab({ isDemoMode = false }: PerformanceAds
 
   // GHOST IN THE MACHINE: isDemoMode auto-pilot
   useEffect(() => {
-    if (!isDemoMode) return;
+    if (!isDemo) return;
 
     const demoOrder = `Inyecta ${formatCurrency(metrics.budget || 150000)} en LinkedIn y Meta Ads. Sincroniza assets de Valeria y Viktor. Objetivo: CPA ${metrics.cpa || '-42%'}.`;
     let charIndex = 0;
@@ -127,7 +162,7 @@ export default function PerformanceAdsLab({ isDemoMode = false }: PerformanceAds
     }, 30);
 
     return () => clearInterval(typeInterval);
-  }, [isDemoMode]);
+  }, [isDemo]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -162,7 +197,7 @@ export default function PerformanceAdsLab({ isDemoMode = false }: PerformanceAds
     }, 1800);
   };
 
-  const hasContent = messages.some(m => m.hasWidget);
+  const hasContent = messages.some(m => m.hasWidget) || !!adUrl;
 
   return (
     <div className="flex flex-col md:flex-row gap-4 h-full overflow-y-auto md:overflow-hidden pb-32 md:pb-0">
@@ -292,11 +327,23 @@ export default function PerformanceAdsLab({ isDemoMode = false }: PerformanceAds
 
               {/* Ad Image with Voice Player */}
               <div className="relative flex-1 min-h-0">
-                <img
-                  src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800&auto=format&fit=crop"
-                  className="w-full h-full object-cover opacity-90"
-                  alt="Server Infrastructure"
-                />
+                {assetLoading ? (
+                  <div className="w-full h-full flex items-center justify-center bg-zinc-100">
+                    <Loader2 className="animate-spin text-violet-500" size={32} />
+                  </div>
+                ) : adUrl ? (
+                  adUrl.includes('.mp4') ? (
+                    <video src={adUrl} autoPlay loop muted className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={adUrl} alt="Ad Retargeting" className="w-full h-full object-cover opacity-90" />
+                  )
+                ) : (
+                  <img
+                    src="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=800&auto=format&fit=crop"
+                    className="w-full h-full object-cover opacity-90"
+                    alt="Server Infrastructure"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                 {/* Voice Player Overlay */}
@@ -373,7 +420,7 @@ export default function PerformanceAdsLab({ isDemoMode = false }: PerformanceAds
                       <DollarSign size={10} className="text-emerald-500" />
                       <span className="text-[8px] text-slate-400 font-mono uppercase">Est. CPA</span>
                     </div>
-                    {isLoading ? (
+                    {metricsLoading ? (
                       <div className="h-4 w-12 bg-slate-200 rounded animate-pulse my-0.5" />
                     ) : (
                       <p className="text-sm font-bold text-slate-900">{metrics.cpa}</p>
@@ -385,7 +432,7 @@ export default function PerformanceAdsLab({ isDemoMode = false }: PerformanceAds
                       <Target size={10} className="text-violet-400" />
                       <span className="text-[8px] text-slate-400 font-mono uppercase">ROAS</span>
                     </div>
-                    {isLoading ? (
+                    {metricsLoading ? (
                       <div className="h-4 w-12 bg-slate-200 rounded animate-pulse my-0.5" />
                     ) : (
                       <p className="text-sm font-bold text-slate-900">{metrics.roas}</p>
