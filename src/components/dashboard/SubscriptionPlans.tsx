@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Shield, Users, Cpu, ArrowRight, X } from 'lucide-react';
+import { CheckCircle2, Shield, Users, Cpu, ArrowRight, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { supabase } from '@/lib/supabaseClient';
 
 const initialOptions = {
     clientId: "test",
@@ -56,9 +57,34 @@ const PLANS = [
 export default function SubscriptionPlans() {
   const [isAnnual, setIsAnnual] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const getCurrentPrice = (plan: typeof PLANS[0]) => {
     return isAnnual ? plan.priceAnnual : plan.priceMonthly;
+  };
+
+  const saveSubscription = async (orderId: string, planId: string, amount: number, payerName: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { error } = await supabase.from('subscriptions').insert({
+        user_id: user?.id || 'anonymous',
+        plan_id: planId,
+        order_id: orderId,
+        amount: amount,
+        currency: 'USD',
+        status: 'active',
+        billing_cycle: isAnnual ? 'annual' : 'monthly',
+        payer_name: payerName,
+        payment_method: 'paypal'
+      });
+
+      if (error) {
+        console.error('Error guardando suscripción:', error);
+      }
+    } catch (err) {
+      console.error('Error en saveSubscription:', err);
+    }
   };
 
   return (
@@ -176,11 +202,21 @@ export default function SubscriptionPlans() {
                                 purchase_units: [{ amount: { currency_code: "USD", value: currentPrice.toString() } }]
                               });
                             }}
-                            onApprove={(data, actions) => {
-                              return actions.order!.capture().then((details) => {
-                                alert(`Transacción completada por ${details.payer?.name?.given_name}. ¡Nodo Activado!`);
-                                setCheckoutPlan(null);
-                              });
+                            onApprove={async (data, actions) => {
+                              setIsProcessing(true);
+                              const details = await actions.order!.capture();
+                              const payerName = details.payer?.name?.given_name || 'Cliente';
+                              
+                              await saveSubscription(
+                                data.orderID || '',
+                                plan.id,
+                                currentPrice,
+                                payerName
+                              );
+                              
+                              setIsProcessing(false);
+                              alert(`Transacción completada por ${payerName}. ¡Nodo Activado!`);
+                              setCheckoutPlan(null);
                             }}
                           />
                         </div>
