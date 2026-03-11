@@ -10,9 +10,9 @@ export default function Landing() {
   const [isMuted, setIsMuted] = useState(true);
   
   const [landingVideos, setLandingVideos] = useState({
-    social: "https://cdn.pixabay.com/video/2023/10/22/186115-877636454_large.mp4",
-    ooh: "https://cdn.pixabay.com/video/2020/05/25/40130-424930032_large.mp4",
-    commercial: "https://cdn.pixabay.com/video/2020/05/25/42493-424930032_large.mp4"
+    social: "https://cdn.coverr.co/videos/coverr-a-person-scrolling-on-a-smartphone-2921/1080p.mp4", 
+    ooh: "https://cdn.coverr.co/videos/coverr-cyberpunk-city-at-night-8643/1080p.mp4",
+    commercial: "https://cdn.coverr.co/videos/coverr-server-room-2751/1080p.mp4"
   });
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function Landing() {
           <span className="font-black tracking-tighter text-xl">EtherAgent<span className="text-zinc-500">.OS</span></span>
         </div>
         <div className="flex items-center gap-4">
-          <button className="text-sm font-bold text-zinc-400 hover:text-white transition-colors">Login</button>
+          <button onClick={() => navigate('/login')} className="text-sm font-bold text-zinc-400 hover:text-white transition-colors">Login</button>
           <button onClick={() => navigate('/dashboard/executive-demo')} className="px-5 py-2 bg-white text-black rounded-full text-sm font-black transition-transform hover:scale-105">
             Ver Demo
           </button>
