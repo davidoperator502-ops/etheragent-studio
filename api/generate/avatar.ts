@@ -58,8 +58,14 @@ export async function POST(request: Request) {
     }
 
     const image = result.generatedImages[0];
+    if (!image.image) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to generate image' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const base64 = image.image.imageBytes;
-    const seed = image.generationMetadata?.seed || Math.floor(Math.random() * 1000000);
+    const seed = (image as any).generationMetadata?.seed || Math.floor(Math.random() * 1000000);
 
     return new Response(
       JSON.stringify({

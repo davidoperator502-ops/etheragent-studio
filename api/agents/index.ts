@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 
 const corsHeaders = {
@@ -30,7 +30,7 @@ Guidelines:
 - Prioritize value over promotion
 - Remember important details from past interactions (use your memory)`;
 
-async function getAgentContext(supabase: ReturnType<typeof createClient>, agentId: string): Promise<string[]> {
+async function getAgentContext(supabase: any, agentId: string): Promise<string[]> {
   const { data: memories } = await supabase
     .from('agent_memories')
     .select('content, memory_type, importance_score')
@@ -85,7 +85,7 @@ async function chatWithAgent(
 }
 
 async function saveConversation(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   agentId: string,
   userId: string | null,
   role: 'user' | 'assistant',
@@ -103,13 +103,13 @@ async function saveConversation(
 }
 
 async function learnFromConversation(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   agentId: string,
   userMessage: string,
   agentResponse: string,
   importanceThreshold: number
 ) {
-  const memoriesToSave = [];
+  const memoriesToSave: { content: string; type: string; importance: number }[] = [];
   
   if (userMessage.includes('remember') || userMessage.includes('recuerda')) {
     const keyInfo = userMessage.replace(/.*(remember|recuerda)\s*/i, '').trim();
