@@ -7,6 +7,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCampaignStore, SelectedVideoMeta } from '@/store/useCampaignStore';
 import { CampaignWorkspace } from '@/lib/geminiService';
 import { toast } from 'sonner';
+import { 
+  InstagramReelPreview, 
+  InstagramFeedPreview, 
+  InstagramStoryPreview, 
+  TikTokPreview, 
+  YouTubeShortPreview,
+  LinkedInPreview,
+  TwitterPreview
+} from './previews/PlatformPreviews';
 
 interface CampaignAsset {
   type: string;
@@ -115,7 +124,8 @@ export default function SocialLab() {
     setVideoStarted(false);
   }, [activeAssetIndex]);
   const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
-  const [videoFormat, setVideoFormat] = useState<'reel' | 'feed' | 'story'>('reel');
+  const [platform, setPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'linkedin' | 'twitter'>('instagram');
+  const [videoFormat, setVideoFormat] = useState<'reel' | 'feed' | 'story' | 'short'>('reel');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -375,186 +385,6 @@ export default function SocialLab() {
   }
 
   const data = campaign.campaign_data;
-
-  const ReelOverlay = ({ hasMedia }: { hasMedia: boolean }) => (
-    <div className={`absolute inset-0 z-20 flex flex-col justify-between ${hasMedia ? 'pointer-events-none' : ''}`}>
-      {/* Gradient overlay (subtle) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/70 pointer-events-none" />
-      {/* Top */}
-      <div className="relative flex justify-between items-start p-4 pt-12 z-10">
-        <div className="flex items-center gap-1">
-          <span className="text-white font-bold text-base tracking-tight drop-shadow-xl">Para ti</span>
-          <div className="w-1 h-1 rounded-full bg-white/40 mt-1.5" />
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white drop-shadow-xl" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="10" cy="10" r="7" />
-              <line x1="15" y1="15" x2="21" y2="21" />
-            </svg>
-          </div>
-        </div>
-      </div>
-      {/* Bottom */}
-      <div className="relative flex justify-between items-end p-4 pb-8 z-10">
-        <div className="flex flex-col gap-2 max-w-[65%]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-300 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white shadow-lg shrink-0 ring-2 ring-white/20">EA</div>
-            <span className="text-white font-bold text-sm drop-shadow-xl">@EtherAgent</span>
-          </div>
-          <p className="text-white/90 text-xs drop-shadow-xl line-clamp-2 leading-relaxed font-medium">
-            {currentAsset?.hook || currentAsset?.visual_description?.substring(0, 80) || 'Campaña AI generada'}
-          </p>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center backdrop-blur relative overflow-hidden">
-              <svg viewBox="0 0 24 24" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18V5l12-2v13" />
-                <circle cx="6" cy="18" r="3" />
-                <circle cx="18" cy="16" r="3" />
-              </svg>
-              <div className="absolute inset-0 rounded-full border-t border-white/30" style={{ animation: 'spin 3s linear infinite' }} />
-            </div>
-            <span className="text-white/70 text-[10px] font-medium drop-shadow-xl">Sunset Vibes · {currentAsset?.call_to_action || 'EtherAgent'}</span>
-          </div>
-        </div>
-        <div className="flex flex-col items-center gap-[18px] pb-1">
-          {[{ icon: Heart, count: '1.2M', active: false }, { icon: MessageCircle, count: '45K', active: false }, { icon: Bookmark, count: '8K', active: false }, { icon: Share2, count: '11K', active: false }].map(({ icon: Icon, count, active }) => (
-            <div key={count} className="flex flex-col items-center gap-0.5">
-              <div className="w-11 h-11 flex items-center justify-center group cursor-pointer transition-transform active:scale-90">
-                <Icon size={24} className={`drop-shadow-xl transition-colors ${active ? 'text-red-500 fill-red-500' : 'text-white'}`} />
-              </div>
-              <span className="text-white text-[10px] font-semibold drop-shadow-xl leading-none">{count}</span>
-            </div>
-          ))}
-          <div className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden border-[3px] border-emerald-400/70 mt-1">
-            <img src="https://images.unsplash.com/photo-1531746790094-e5ef0f0e7b3e?auto=format&fit=crop&q=80&w=100" className="w-full h-full object-cover" alt="profile" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const FeedOverlay = ({ hasMedia }: { hasMedia: boolean }) => (
-    <div className={`absolute inset-0 z-20 flex flex-col ${hasMedia ? '' : 'justify-center'}`}>
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-3 py-3 z-30 bg-gradient-to-b from-black/60 to-transparent">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full p-[2px] bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 flex items-center justify-center shrink-0">
-            <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
-              <span className="text-[9px] font-bold text-white">EA</span>
-            </div>
-          </div>
-          <div className="flex flex-col leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="text-white text-[12px] font-semibold">etheragent</span>
-              <span className="text-blue-400 text-[10px]">• Follow</span>
-            </div>
-            <span className="text-zinc-400 text-[9px]">EtherAgent · Sponsored</span>
-          </div>
-        </div>
-        <MoreHorizontal size={18} className="text-white" />
-      </div>
-      {/* Media area */}
-      {hasMedia && (
-        <div className="flex-1 relative flex items-center justify-center bg-black z-20">
-          {!videoStarted && (currentAsset?.thumbnail_url || currentAsset?.video_url) && (
-            <div className="absolute inset-0 z-10">
-              <img src={currentAsset.thumbnail_url || currentAsset.video_url!} className="w-full h-full object-cover" alt="feed media" />
-            </div>
-          )}
-          {currentAsset?.video_url && (videoStarted || !currentAsset.thumbnail_url) && (
-            <video key={currentAsset.video_url} src={currentAsset.video_url}
-              className="w-full h-full object-contain z-0" autoPlay={videoStarted} controls={false} loop playsInline muted
-            />
-          )}
-          {currentAsset?.video_url && !currentAsset.thumbnail_url && !videoStarted && (
-            <div className="absolute inset-0 z-10">
-              <video src={currentAsset.video_url} className="w-full h-full object-cover" muted loop playsInline />
-            </div>
-          )}
-        </div>
-      )}
-      {/* Bottom action bar */}
-      <div className="px-3 pb-2 pt-3 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent">
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-4">
-            <button className="group transition-transform active:scale-90"><Heart size={20} className="text-white group-hover:text-red-400 transition-colors" /></button>
-            <button className="group transition-transform active:scale-90"><MessageCircle size={20} className="text-white" /></button>
-            <button className="group transition-transform active:scale-90"><Share2 size={20} className="text-white" /></button>
-          </div>
-          <button className="group transition-transform active:scale-90"><Bookmark size={20} className="text-white" /></button>
-        </div>
-        <div className="mb-1.5">
-          <span className="text-white text-[11px] font-bold">128,431 likes</span>
-        </div>
-        <div className="flex items-start gap-1.5 mb-0.5">
-          <span className="text-white text-[11px] font-semibold shrink-0">etheragent</span>
-          <span className="text-white/80 text-[11px] leading-tight line-clamp-2">{currentAsset?.hook || currentAsset?.visual_description?.substring(0, 80) || 'Campaña AI generada'}</span>
-        </div>
-        <span className="text-zinc-500 text-[10px] block mb-1">View all 1,842 comments</span>
-        <span className="text-zinc-600 text-[9px] block mb-2">2 hours ago</span>
-        <div className="flex items-center gap-2.5 border-t border-white/10 pt-2.5 mt-1">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-indigo-500 flex items-center justify-center text-[6px] font-bold text-white shrink-0">EA</div>
-          <input type="text" placeholder="Add a comment..."
-            className="flex-1 bg-transparent text-[11px] text-white placeholder-zinc-600 outline-none"
-            onClick={(e) => e.stopPropagation()} readOnly
-          />
-          <button className="text-blue-400 text-[11px] font-semibold opacity-60 cursor-default">Post</button>
-          <button className="text-blue-400 text-[11px] font-semibold opacity-60 cursor-default">😊</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const StoryOverlay = ({ hasMedia }: { hasMedia: boolean }) => (
-    <div className="absolute inset-0 z-20 flex flex-col">
-      {/* Gradients (top + bottom like real stories) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60 pointer-events-none z-10" />
-      {/* Progress bar */}
-      <div className="absolute top-3 left-3 right-3 flex gap-1.5 z-30">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex-1 h-[3px] bg-white/30 rounded-full overflow-hidden">
-            <div className={`h-full bg-white rounded-full ${i === 0 ? 'w-full' : i === 1 ? 'w-2/5' : 'w-0'} transition-all duration-1000 ease-linear`} />
-          </div>
-        ))}
-      </div>
-      {/* Top info */}
-      <div className="absolute top-8 left-3 right-3 flex items-center justify-between z-30">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 via-emerald-300 to-indigo-500 flex items-center justify-center text-[9px] font-bold text-white shadow-lg ring-2 ring-white/30">EA</div>
-          <div className="flex flex-col leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="text-white text-[12px] font-bold drop-shadow-lg">etheragent</span>
-              <span className="text-white/70 text-[9px] drop-shadow-lg">· 2h</span>
-            </div>
-            <span className="text-white/50 text-[8px] drop-shadow-lg uppercase tracking-wider">{currentAsset?.call_to_action || 'EtherAgent'}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <MoreHorizontal size={18} className="text-white drop-shadow-lg" />
-          <X size={18} className="text-white drop-shadow-lg" />
-        </div>
-      </div>
-      {/* Bottom CTA */}
-      <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-3 px-4 z-30">
-        <div className="flex items-center gap-2 w-full max-w-[280px]">
-          <input type="text" placeholder="Send message..."
-            className="flex-1 bg-white/15 backdrop-blur-lg border border-white/15 rounded-full py-2.5 px-4 text-[12px] text-white placeholder-zinc-300 outline-none"
-            onClick={(e) => e.stopPropagation()} readOnly
-          />
-          <button className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-lg border border-white/15 flex items-center justify-center transition-transform active:scale-90">
-            <Send size={14} className="text-white -rotate-45 ml-0.5" />
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-white/10 backdrop-blur flex items-center justify-center animate-pulse">
-            <ArrowRight size={14} className="text-white" />
-          </div>
-          <span className="text-white/80 text-[11px] font-semibold tracking-wider uppercase drop-shadow-lg">Swipe up</span>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex flex-col xl:flex-row min-h-screen w-full bg-[#050505] text-white p-3 sm:p-4 md:p-8 gap-4 sm:gap-8 pb-32 overflow-x-hidden overflow-y-auto">
@@ -833,7 +663,7 @@ export default function SocialLab() {
       {/* ── RIGHT PANEL: Phone Preview + Upload ── */}
       <div className="w-full xl:w-[420px] shrink-0 flex flex-col items-center pt-2">
 
-        <div className="w-[280px] sm:w-[300px] md:w-[340px] flex p-1 bg-[#111] rounded-xl border border-white/10 mb-4">
+        <div className="w-[280px] sm:w-[300px] md:w-[340px] flex p-1 bg-[#111] rounded-xl border border-white/10 mb-3">
           <button onClick={() => setMediaType('video')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 min-h-[44px] text-xs font-bold rounded-lg transition-all active:scale-95 ${mediaType === 'video' ? 'bg-emerald-500/20 text-emerald-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
             <Video size={14} /> VIDEO
           </button>
@@ -842,13 +672,35 @@ export default function SocialLab() {
           </button>
         </div>
 
-        <div className="w-[280px] sm:w-[300px] md:w-[340px] flex gap-1.5 mb-4">
-          {(['reel', 'feed', 'story'] as const).map(fmt => (
-            <button key={fmt} onClick={() => setVideoFormat(fmt)} className={`px-3 py-2 min-h-[40px] sm:min-h-[32px] rounded-md text-[10px] font-mono uppercase transition-all active:scale-95 ${videoFormat === fmt ? 'bg-emerald-500 text-black font-bold' : 'bg-[#111] text-zinc-500 border border-white/5 hover:bg-zinc-800'}`}>
-              {fmt}
+        {/* Platform Selector */}
+        <div className="w-[280px] sm:w-[300px] md:w-[340px] flex flex-wrap gap-1.5 mb-2">
+          {(['instagram', 'tiktok', 'youtube', 'linkedin', 'twitter'] as const).map(p => (
+            <button key={p} onClick={() => setPlatform(p)} className={`px-3 py-1.5 min-h-[32px] rounded-md text-[10px] font-mono uppercase transition-all active:scale-95 ${platform === p ? 'bg-emerald-500 text-black font-bold' : 'bg-[#111] text-zinc-500 border border-white/5 hover:bg-zinc-800'}`}>
+              {p}
             </button>
           ))}
         </div>
+
+        {/* Format Selector (Contextual) */}
+        {platform === 'instagram' && (
+          <div className="w-[280px] sm:w-[300px] md:w-[340px] flex gap-1.5 mb-4">
+            {(['reel', 'feed', 'story'] as const).map(fmt => (
+              <button key={fmt} onClick={() => setVideoFormat(fmt)} className={`flex-1 py-1.5 min-h-[32px] rounded-md text-[10px] font-mono uppercase transition-all active:scale-95 ${videoFormat === fmt ? 'bg-zinc-700 text-white font-bold' : 'bg-[#111] text-zinc-500 border border-white/5 hover:bg-zinc-800'}`}>
+                {fmt}
+              </button>
+            ))}
+          </div>
+        )}
+        {platform === 'youtube' && (
+          <div className="w-[280px] sm:w-[300px] md:w-[340px] flex gap-1.5 mb-4">
+            {(['short'] as const).map(fmt => (
+              <button key={fmt} onClick={() => setVideoFormat(fmt)} className={`flex-1 py-1.5 min-h-[32px] rounded-md text-[10px] font-mono uppercase transition-all active:scale-95 ${videoFormat === fmt ? 'bg-zinc-700 text-white font-bold' : 'bg-[#111] text-zinc-500 border border-white/5 hover:bg-zinc-800'}`}>
+                {fmt}
+              </button>
+            ))}
+          </div>
+        )}
+        {platform !== 'instagram' && platform !== 'youtube' && <div className="mb-4" />}
 
         {/* Phone Frame with Video Player */}
         <div className="relative w-[280px] sm:w-[300px] md:w-[340px] h-[560px] sm:h-[640px] md:h-[720px] bg-black border-[6px] sm:border-[8px] border-[#1c1c1e] rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden flex flex-col shrink-0">
@@ -869,12 +721,20 @@ export default function SocialLab() {
                         </motion.div>
                       )}
                       <video key={currentAsset.video_url} src={currentAsset.video_url}
-                        className={`absolute inset-0 w-full h-full ${videoFormat === 'feed' ? 'object-contain' : 'object-cover'} z-0`}
+                        className={`absolute inset-0 w-full h-full ${
+                          (platform === 'instagram' && videoFormat === 'feed') || platform === 'linkedin' || platform === 'twitter' 
+                          ? 'object-contain bg-zinc-900' 
+                          : 'object-cover'
+                        } z-0`}
                         controls={false} autoPlay={videoStarted} onPlay={() => setVideoStarted(true)} loop playsInline muted
                       />
                     </>
                   ) : (
-                    <img src={currentAsset.video_url} className="absolute inset-0 w-full h-full object-cover z-0" alt="campaign media" />
+                    <img src={currentAsset.video_url} className={`absolute inset-0 w-full h-full ${
+                          (platform === 'instagram' && videoFormat === 'feed') || platform === 'linkedin' || platform === 'twitter' 
+                          ? 'object-contain bg-zinc-900' 
+                          : 'object-cover'
+                        } z-0`} alt="campaign media" />
                   )}
                 </motion.div>
               ) : (
@@ -911,10 +771,14 @@ export default function SocialLab() {
 
             {/* Format-specific overlay (always on top of media) */}
             <AnimatePresence mode="wait">
-              <motion.div key={videoFormat} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="absolute inset-0 z-20">
-                {videoFormat === 'reel' && <ReelOverlay hasMedia={!!currentAsset?.video_url} />}
-                {videoFormat === 'feed' && <FeedOverlay hasMedia={!!currentAsset?.video_url} />}
-                {videoFormat === 'story' && <StoryOverlay hasMedia={!!currentAsset?.video_url} />}
+              <motion.div key={`${platform}-${videoFormat}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="absolute inset-0 z-20 pointer-events-none">
+                {platform === 'instagram' && videoFormat === 'reel' && <InstagramReelPreview hasMedia={!!currentAsset?.video_url} asset={currentAsset} />}
+                {platform === 'instagram' && videoFormat === 'feed' && <InstagramFeedPreview hasMedia={!!currentAsset?.video_url} asset={currentAsset} />}
+                {platform === 'instagram' && videoFormat === 'story' && <InstagramStoryPreview hasMedia={!!currentAsset?.video_url} asset={currentAsset} />}
+                {platform === 'tiktok' && <TikTokPreview hasMedia={!!currentAsset?.video_url} asset={currentAsset} />}
+                {platform === 'youtube' && <YouTubeShortPreview hasMedia={!!currentAsset?.video_url} asset={currentAsset} />}
+                {platform === 'linkedin' && <LinkedInPreview hasMedia={!!currentAsset?.video_url} asset={currentAsset} />}
+                {platform === 'twitter' && <TwitterPreview hasMedia={!!currentAsset?.video_url} asset={currentAsset} />}
               </motion.div>
             </AnimatePresence>
 
