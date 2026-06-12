@@ -873,13 +873,31 @@ export default function SocialLab() {
       {/* ── RIGHT PANEL: Phone Preview + Upload ── */}
       <div className="w-full xl:w-[420px] shrink-0 flex flex-col items-center pt-2">
 
-        <div className="w-[280px] sm:w-[300px] md:w-[340px] flex p-1 bg-[#111] rounded-xl border border-white/10 mb-3">
-          <button onClick={() => setMediaType('video')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 min-h-[44px] text-xs font-bold rounded-lg transition-all active:scale-95 ${mediaType === 'video' ? 'bg-emerald-500/20 text-emerald-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
-            <Video size={14} /> VIDEO
-          </button>
-          <button onClick={() => setMediaType('image')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 min-h-[44px] text-xs font-bold rounded-lg transition-all active:scale-95 ${mediaType === 'image' ? 'bg-emerald-500/20 text-emerald-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
-            <ImageIcon size={14} /> IMAGE
-          </button>
+        <div className="w-[280px] sm:w-[300px] md:w-[340px] relative flex p-1 bg-[#111] rounded-xl border border-white/10 mb-3">
+          {([
+            { id: 'video' as const, label: 'VIDEO', Icon: Video },
+            { id: 'image' as const, label: 'IMAGEN', Icon: ImageIcon },
+          ]).map(({ id, label, Icon }) => {
+            const active = mediaType === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setMediaType(id)}
+                className="relative flex-1 flex items-center justify-center gap-2 py-2.5 min-h-[44px] text-xs font-bold rounded-lg transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+              >
+                {active && (
+                  <motion.span
+                    layoutId="mediaTypePill"
+                    transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                    className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/40 rounded-lg"
+                  />
+                )}
+                <span className={`relative z-10 flex items-center gap-2 transition-colors duration-200 ${active ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                  <Icon size={14} /> {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Platform Selector — single horizontal row, scroll-x with hidden scrollbar */}
@@ -942,20 +960,12 @@ export default function SocialLab() {
                         </motion.div>
                       )}
                       <video key={currentAsset.video_url} src={currentAsset.video_url}
-                        className={`absolute inset-0 w-full h-full ${
-                          (platform === 'instagram' && videoFormat === 'feed') || platform === 'linkedin' || platform === 'twitter' 
-                          ? 'object-contain bg-zinc-900' 
-                          : 'object-cover'
-                        } z-0`}
+                        className="absolute inset-0 w-full h-full object-cover z-0"
                         controls={false} autoPlay={videoStarted} onPlay={() => setVideoStarted(true)} loop playsInline muted
                       />
                     </>
                   ) : (
-                    <img src={currentAsset.video_url} className={`absolute inset-0 w-full h-full ${
-                          (platform === 'instagram' && videoFormat === 'feed') || platform === 'linkedin' || platform === 'twitter' 
-                          ? 'object-contain bg-zinc-900' 
-                          : 'object-cover'
-                        } z-0`} alt="campaign media" />
+                    <img src={currentAsset.video_url} className="absolute inset-0 w-full h-full object-cover z-0" alt="campaign media" />
                   )}
                 </motion.div>
               ) : (
@@ -973,7 +983,7 @@ export default function SocialLab() {
                       {currentAsset?.on_screen_text?.[0] || currentAsset?.hook || 'Tu campaña aquí'}
                     </p>
                     <p className="text-zinc-400/90 text-[11px] leading-relaxed line-clamp-2">
-                      Sube tu video renderizado para ver el preview real
+                      Sube tu {mediaType === 'video' ? 'video' : 'imagen'} para ver el preview real
                     </p>
                   </div>
                 </motion.div>
@@ -996,11 +1006,13 @@ export default function SocialLab() {
             {/* Play button (on top of overlay) */}
             {mediaType === 'video' && !videoStarted && currentAsset?.video_url && (
               <div className="absolute inset-0 z-30 flex items-center justify-center">
-                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   onClick={() => setVideoStarted(true)}
-                  className="w-20 h-20 rounded-full bg-emerald-500/80 backdrop-blur-md flex items-center justify-center text-black shadow-[0_0_30px_rgba(16,185,129,0.5)]"
+                  className="w-16 h-16 rounded-full bg-black/35 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                  aria-label="Reproducir"
                 >
-                  <Play size={32} className="ml-1" />
+                  <Play size={26} className="ml-1" fill="currentColor" />
                 </motion.button>
               </div>
             )}
@@ -1014,10 +1026,12 @@ export default function SocialLab() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onClick={() => fileInputRef.current?.click()}
-          className={`mt-4 w-[280px] sm:w-[300px] md:w-[340px] border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+          className={`group mt-4 w-[280px] sm:w-[300px] md:w-[340px] border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 ${
             dragOver
-              ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_30px_rgba(16,185,129,0.2)]'
-              : 'border-zinc-700 bg-zinc-900/40 hover:border-zinc-500 hover:bg-zinc-900/60'
+              ? 'border-emerald-500 bg-emerald-500/10 scale-[1.01]'
+              : currentAsset?.video_url
+                ? 'border-emerald-500/30 bg-emerald-500/[0.04] hover:bg-emerald-500/[0.07]'
+                : 'border-zinc-700 bg-zinc-900/40 hover:border-emerald-500/40 hover:bg-zinc-900/60'
           }`}
         >
           <input
@@ -1029,20 +1043,26 @@ export default function SocialLab() {
           />
           {uploading ? (
             <div className="flex flex-col items-center gap-2">
-              <Loader2 size={24} className="text-emerald-400 animate-spin" />
-              <span className="text-xs text-zinc-400 font-mono">Subiendo...</span>
+              <Loader2 size={22} className="text-emerald-400 animate-spin" />
+              <span className="text-xs text-zinc-400 font-mono">Subiendo…</span>
             </div>
           ) : currentAsset?.video_url ? (
-            <div className="flex flex-col items-center gap-2">
-              <CheckCircle2 size={24} className="text-emerald-500" />
-              <span className="text-xs text-emerald-400 font-mono">{mediaType === 'video' ? 'Video' : 'Imagen'} subido</span>
-              <span className="text-[10px] text-zinc-600">Click para reemplazar</span>
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={18} className="text-emerald-400" />
+              </div>
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-xs text-emerald-300 font-semibold">{mediaType === 'video' ? 'Video' : 'Imagen'} cargado</span>
+                <span className="text-[10px] text-zinc-500">Click o suelta para reemplazar</span>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
-              <FileUp size={24} className="text-zinc-500 group-hover:text-zinc-300" />
-              <span className="text-xs text-zinc-400 font-mono">Sube tu {mediaType === 'video' ? 'video' : 'imagen'} renderizado</span>
-              <span className="text-[10px] text-zinc-600">Drag & drop o click para seleccionar</span>
+              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-white/5 flex items-center justify-center transition-colors duration-200 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30">
+                <FileUp size={18} className="text-zinc-500 transition-colors duration-200 group-hover:text-emerald-400" />
+              </div>
+              <span className="text-xs text-zinc-300 font-semibold mt-1">Sube tu {mediaType === 'video' ? 'video' : 'imagen'}</span>
+              <span className="text-[10px] text-zinc-600">Arrastra o haz click · {mediaType === 'video' ? 'MP4 · WEBM · MOV' : 'JPG · PNG · WEBP'}</span>
             </div>
           )}
         </div>
