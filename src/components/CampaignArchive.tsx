@@ -1,193 +1,184 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2, Search, Filter, FolderArchive, Copy, Plus, MoreVertical, Eye, Calendar, Tag, ExternalLink } from 'lucide-react';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { useCampaignHistory } from '@/hooks/useCampaignHistory';
-import { useNexusHistory } from '@/hooks/useNexusHistory';
-import { Database, Loader2, ExternalLink, Activity, CheckCircle2, Rocket, Brain, Sparkles, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+
+interface Client {
+  id: string;
+  nombre: string;
+  slug: string;
+}
+
+interface Campaign {
+  id: string;
+  nombre: string;
+  plataforma: string;
+  estado: string;
+  created_at: string;
+  client_id: string;
+  client?: Client;
+}
 
 export default function CampaignArchive() {
-    const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'deployments' | 'nexus'>('nexus');
-    const { campaigns: deployments, isLoading: deploymentsLoading } = useCampaignHistory();
-    const { campaigns: nexusCampaigns, isLoading: nexusLoading } = useNexusHistory();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterClient, setFilterClient] = useState('all');
 
-    const isLoading = deploymentsLoading || nexusLoading;
+  useEffect(() => {
+    fetchData();
+  }, [user]);
 
-    if (isLoading) {
-        return (
-            <div className="w-full p-12 flex flex-col items-center justify-center bg-zinc-950/50 rounded-3xl border border-white/5">
-                <div className="relative">
-                    <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse" />
-                    <Loader2 className="w-10 h-10 text-emerald-500 animate-spin relative z-10" />
-                </div>
-                <p className="text-zinc-500 font-mono text-[10px] tracking-[0.3em] uppercase mt-6 animate-pulse">
-                    Desencriptando Archivo Neural...
-                </p>
-            </div>
-        );
+  const fetchData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const [campRes, cliRes] = await Promise.all([
+        supabase.from('campaigns').select('*, client:clients(id, nombre, slug)').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('clients').select('*').eq('user_id', user.id).order('nombre')
+      ]);
+
+      if (campRes.error) throw campRes.error;
+      if (cliRes.error) throw cliRes.error;
+
+      setCampaigns(campRes.data || []);
+      setClients(cliRes.data || []);
+    } catch (err: any) {
+      console.error('Error fetching archive:', err);
+      toast.error('Error al cargar historial');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return (
-        <div className="w-full flex flex-col gap-6">
-            {/* Tab Switcher */}
-            <div className="flex p-1 bg-zinc-900/60 border border-white/5 rounded-2xl w-fit self-center">
-                <button
-                    onClick={() => setActiveTab('nexus')}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        activeTab === 'nexus' 
-                        ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' 
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                >
-                    <Brain size={14} /> ESTRATEGIAS NEXUS
-                </button>
-                <button
-                    onClick={() => setActiveTab('deployments')}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        activeTab === 'deployments' 
-                        ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' 
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                >
-                    <Rocket size={14} /> DESPLIEGUES ACTIVOS
-                </button>
-            </div>
+  const handleDuplicate = async (campaign: Campaign) => {
+    toast.info('Duplicando campaña...');
+    // Lógica de duplicación
+    const { data: original, error: fetchErr } = await supabase.from('campaigns').select('*').eq('id', campaign.id).single();
+    if (fetchErr || !original) return toast.error('Error al obtener original');
+    
+    const { id, created_at, updated_at, ...rest } = original;
+    const { error: insertErr } = await supabase.from('campaigns').insert({
+      ...rest,
+      nombre: `${rest.nombre} (Copia)`,
+      estado: 'draft'
+    });
+    
+    if (insertErr) return toast.error('Error al duplicar');
+    toast.success('Campaña duplicada');
+    fetchData();
+  };
 
-            <div className="w-full bg-zinc-900/40 backdrop-blur-xl border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-white/10 bg-black/20 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Database className="text-emerald-500 w-5 h-5" />
-                        <h3 className="text-white font-bold tracking-widest uppercase text-sm">
-                            {activeTab === 'nexus' ? 'Archivo de Inteligencia Creativa' : 'Registro de Despliegues'}
-                        </h3>
-                    </div>
-                    <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-mono px-3 py-1 rounded-full border border-emerald-500/20">
-                        {activeTab === 'nexus' ? nexusCampaigns.length : deployments.length} REGISTROS
-                    </span>
-                </div>
+  const handleArchive = async (id: string) => {
+    const { error } = await supabase.from('campaigns').update({ estado: 'archivada' }).eq('id', id);
+    if (error) return toast.error('Error al archivar');
+    toast.success('Campaña archivada');
+    fetchData();
+  };
 
-                <div className="overflow-x-auto">
-                    <AnimatePresence mode="wait">
-                        {activeTab === 'nexus' ? (
-                            <motion.table 
-                                key="nexus-table"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="w-full text-left border-collapse"
-                            >
-                                <thead>
-                                    <tr className="bg-zinc-950/80 border-b border-white/5 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
-                                        <th className="p-5 font-medium">Estrategia / Target</th>
-                                        <th className="p-5 font-medium">Sector Detectado</th>
-                                        <th className="p-5 font-medium">Neural Score</th>
-                                        <th className="p-5 font-medium text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {nexusCampaigns.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="p-12 text-center">
-                                                <Brain className="w-12 h-12 text-zinc-800 mx-auto mb-4" />
-                                                <p className="text-zinc-500 font-mono text-xs">Sin estrategias generadas. Inicia en Nexus Brain.</p>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        nexusCampaigns.map((camp) => (
-                                            <tr key={camp.id} className="hover:bg-white/[0.02] transition-colors group">
-                                                <td className="p-5">
-                                                    <p className="text-white font-bold text-sm mb-1">{new URL(camp.target_url).hostname}</p>
-                                                    <p className="text-zinc-600 font-mono text-[9px] truncate max-w-[200px]">{camp.id}</p>
-                                                </td>
-                                                <td className="p-5">
-                                                    <span className="px-2 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-400 uppercase tracking-widest">
-                                                        {camp.detected_sector || 'General'}
-                                                    </span>
-                                                </td>
-                                                <td className="p-5">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${camp.strategy_score}%` }} />
-                                                        </div>
-                                                        <span className="text-zinc-400 font-mono text-xs">{camp.strategy_score}/100</span>
-                                                    </div>
-                                                </td>
-                                                <td className="p-5 text-right">
-                                                    <button 
-                                                        onClick={() => navigate(`/dashboard/social?campaign=${camp.id}`)}
-                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-emerald-500 text-zinc-400 hover:text-black border border-white/10 hover:border-emerald-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 group/btn"
-                                                    >
-                                                        Abrir Lab <ChevronRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </motion.table>
-                        ) : (
-                            <motion.table 
-                                key="deploy-table"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="w-full text-left border-collapse"
-                            >
-                                <thead>
-                                    <tr className="bg-zinc-950/80 border-b border-white/5 text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
-                                        <th className="p-5 font-medium">Identificador de Campaña</th>
-                                        <th className="p-5 font-medium">Target URL</th>
-                                        <th className="p-5 font-medium">Estado</th>
-                                        <th className="p-5 font-medium">Capital / ROAS</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {deployments.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="p-12 text-center">
-                                                <Rocket className="w-12 h-12 text-zinc-800 mx-auto mb-4" />
-                                                <p className="text-zinc-500 font-mono text-xs">Sin despliegues activos registrados.</p>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        deployments.map((camp) => (
-                                            <tr key={camp.id} className="hover:bg-white/[0.02] transition-colors group">
-                                                <td className="p-5">
-                                                    <p className="text-white font-bold text-sm mb-1">{camp.title}</p>
-                                                    <p className="text-zinc-600 font-mono text-[9px] truncate max-w-[150px]">{camp.id}</p>
-                                                </td>
-                                                <td className="p-5">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-zinc-400 text-xs truncate max-w-[150px]">{camp.target_url}</span>
-                                                        <ExternalLink size={12} className="text-zinc-600 group-hover:text-emerald-500 transition-colors cursor-pointer" />
-                                                    </div>
-                                                </td>
-                                                <td className="p-5">
-                                                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold font-mono border ${camp.status === 'deployed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                                            camp.status === 'compiling' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                                                'bg-zinc-800 text-zinc-400 border-zinc-700'
-                                                        }`}>
-                                                        {camp.status === 'deployed' ? <CheckCircle2 size={10} /> : <Activity size={10} />}
-                                                        {camp.status.toUpperCase()}
-                                                    </div>
-                                                </td>
-                                                <td className="p-5">
-                                                    <p className="text-white text-sm font-bold">
-                                                        ${camp.budget_allocated?.toLocaleString() || 0}
-                                                    </p>
-                                                    <p className="text-emerald-500 font-mono text-[10px]">
-                                                        ROAS: {camp.metrics?.roas || 'N/A'}
-                                                    </p>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </motion.table>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </div>
+  const filteredCampaigns = campaigns.filter(c => {
+    const matchesSearch = c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || c.client?.nombre?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || c.estado === filterStatus;
+    const matchesClient = filterClient === 'all' || c.client_id === filterClient;
+    return matchesSearch && matchesStatus && matchesClient;
+  });
+
+  return (
+    <div className="flex-1 p-6 md:p-8 flex flex-col min-h-screen bg-[#050505] text-white">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Historial de Campañas</h1>
+        <p className="text-zinc-400">Gestiona y organiza todas tus campañas generadas.</p>
+      </header>
+
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
+          <input 
+            type="text" 
+            placeholder="Buscar por campaña o cliente..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+          />
         </div>
-    );
+        <div className="flex gap-2">
+          <select 
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none"
+          >
+            <option value="all">Todos los estados</option>
+            <option value="draft">Borrador</option>
+            <option value="activa">Activa</option>
+            <option value="archivada">Archivada</option>
+          </select>
+          <select 
+            value={filterClient}
+            onChange={(e) => setFilterClient(e.target.value)}
+            className="bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none"
+          >
+            <option value="all">Todos los clientes</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="animate-spin text-emerald-500 w-10 h-10" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredCampaigns.length === 0 ? (
+            <div className="text-center py-12 bg-zinc-900/50 rounded-2xl border border-white/5">
+              <FolderArchive className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-zinc-300">No hay campañas</h3>
+              <p className="text-sm text-zinc-500">No se encontraron resultados para tu búsqueda.</p>
+            </div>
+          ) : (
+            filteredCampaigns.map(camp => (
+              <div key={camp.id} className="bg-zinc-900 border border-white/10 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-emerald-500/30 transition-colors group">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white">{camp.nombre || 'Sin título'}</h3>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                      camp.estado === 'activa' ? 'bg-emerald-500/20 text-emerald-400' : 
+                      camp.estado === 'archivada' ? 'bg-zinc-800 text-zinc-400' : 'bg-amber-500/20 text-amber-400'
+                    }`}>
+                      {camp.estado}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-zinc-500">
+                    <span className="flex items-center gap-1"><Tag className="w-3 h-3" /> {camp.client?.nombre || 'Sin cliente'}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {format(new Date(camp.created_at), 'dd MMM yyyy')}</span>
+                    <span className="capitalize">{camp.plataforma || 'Varias'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                  {camp.client?.slug && (
+                    <button onClick={() => window.open(`/c/${camp.client?.slug}`, '_blank')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-300 transition-colors tooltip-trigger" title="Portal de Cliente">
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button onClick={() => handleDuplicate(camp)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-300 transition-colors tooltip-trigger" title="Duplicar">
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleArchive(camp.id)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded-lg text-zinc-300 transition-colors tooltip-trigger" title="Archivar">
+                    <FolderArchive className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

@@ -16,6 +16,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const Login = lazy(() => import('./pages/Login'));
 const Prototypes = lazy(() => import('./pages/Prototypes'));
+const ClientPortal = lazy(() => import('./pages/ClientPortal'));
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
                     <Route path="/dashboard/*" element={<Index />} />
                     <Route path="/prototypes" element={<Prototypes />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/c/:slug" element={<ClientPortal />} />
                     <Route path="/subscription" element={<Navigate to="/dashboard/subscription" replace />} />
                     <Route path="/executive-demo" element={<Navigate to="/dashboard/executive-demo" replace />} />
                     <Route path="*" element={<NotFound />} />

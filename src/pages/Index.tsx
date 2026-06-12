@@ -38,6 +38,7 @@ const SubscriptionPlans = lazy(() => import('@/components/dashboard/Subscription
 const CommunityLab = lazy(() => import('@/components/dashboard/CommunityLab'));
 const NexusBrain = lazy(() => import('@/components/dashboard/NexusBrain'));
 const OmniPublisher = lazy(() => import('@/components/dashboard/publisher/OmniPublisher'));
+const CampaignArchive = lazy(() => import('@/components/CampaignArchive'));
 
 const EtherAgentWelcome = lazy(() => import('@/components/dashboard/EtherAgentWelcome'));
 
@@ -220,6 +221,7 @@ export default function Index() {
         <Route path="hub" element={<Navigate to="/dashboard/nexus-brain" replace />} />
         <Route path="nexus" element={<ProtectedRoute><NexusDashboard /></ProtectedRoute>} />
         <Route path="social" element={<ProtectedRoute><SocialLab /></ProtectedRoute>} />
+        <Route path="campaigns" element={<ProtectedRoute><CampaignArchive /></ProtectedRoute>} />
         <Route path="ooh" element={<ProtectedRoute><VirtualOOHLab /></ProtectedRoute>} />
         <Route path="ads" element={<ProtectedRoute><PerformanceAdsLab /></ProtectedRoute>} />
         <Route path="spaces" element={<ProtectedRoute><SystemSpaces /></ProtectedRoute>} />

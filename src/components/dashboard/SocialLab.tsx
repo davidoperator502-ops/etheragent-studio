@@ -118,6 +118,67 @@ export default function SocialLab() {
   const [loading, setLoading] = useState(true);
   const [activeAssetIndex, setActiveAssetIndex] = useState(0);
   const [videoStarted, setVideoStarted] = useState(false);
+  
+  // Save Campaign state
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('new');
+  const [newClientName, setNewClientName] = useState('');
+  const [campaignName, setCampaignName] = useState('');
+  const [savingCampaign, setSavingCampaign] = useState(false);
+
+  const fetchClients = async () => {
+    if (!user) return;
+    const { data } = await supabase.from('clients').select('*').eq('user_id', user.id).order('nombre');
+    if (data) setClients(data);
+  };
+
+  const handleSaveArchive = async () => {
+    if (!user || !campaign) return;
+    if (!campaignName.trim()) return toast.error('El nombre de la campaña es requerido');
+    
+    setSavingCampaign(true);
+    try {
+      let finalClientId = selectedClientId;
+      
+      // Crear cliente si se eligió 'new'
+      if (selectedClientId === 'new') {
+        if (!newClientName.trim()) throw new Error('El nombre del cliente es requerido');
+        const slug = newClientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        
+        const { data: newCli, error: cliErr } = await supabase
+          .from('clients')
+          .insert({ user_id: user.id, nombre: newClientName, slug: `${slug}-${Date.now().toString().slice(-4)}` })
+          .select().single();
+          
+        if (cliErr) throw new Error('Error al crear el cliente: ' + cliErr.message);
+        finalClientId = newCli.id;
+      }
+      
+      // Crear la campaña en el archivo
+      const { error: campErr } = await supabase.from('campaigns').insert({
+        user_id: user.id,
+        client_id: finalClientId,
+        nombre: campaignName,
+        plataforma: platform,
+        estado: 'draft',
+        contenido: { ...campaign.campaign_data, assets: currentAsset ? [currentAsset] : [] }
+      });
+      
+      if (campErr) throw new Error('Error al guardar la campaña: ' + campErr.message);
+      
+      toast.success('Campaña guardada en el archivo exitosamente');
+      setIsSaveModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSavingCampaign(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isSaveModalOpen) fetchClients();
+  }, [isSaveModalOpen]);
 
   useEffect(() => {
     // Reset video state when switching assets
@@ -416,12 +477,20 @@ export default function SocialLab() {
               <span className="text-emerald-500 text-[10px] font-mono tracking-widest uppercase">Campaña: {new URL(campaign.target_url).hostname}</span>
             </div>
             {currentAsset && (
-              <button
-                onClick={handleCopyMaster}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-              >
-                <Clapperboard size={14} /> Copiar Prompt Maestro
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsSaveModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 text-xs font-bold rounded-xl transition-all active:scale-95 border border-indigo-500/30"
+                >
+                  <Bookmark size={14} /> Guardar Campaña
+                </button>
+                <button
+                  onClick={handleCopyMaster}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                >
+                  <Clapperboard size={14} /> Copiar Prompt Maestro
+                </button>
+              </div>
             )}
           </div>
 
@@ -640,8 +709,6 @@ export default function SocialLab() {
               </button>
             </div>
           )}
-
-
 
           {/* Audience Insights */}
           {data.audience && (
@@ -882,6 +949,82 @@ export default function SocialLab() {
           </div>
         </button>
       </div>
+
+      {/* Save Campaign Modal */}
+      <AnimatePresence>
+        {isSaveModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-zinc-950 border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl relative"
+            >
+              <button
+                onClick={() => setIsSaveModalOpen(false)}
+                className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+              
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Bookmark className="text-emerald-500" />
+                Guardar en Historial
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono text-zinc-500 uppercase mb-2">Nombre de Campaña</label>
+                  <input 
+                    type="text"
+                    value={campaignName}
+                    onChange={e => setCampaignName(e.target.value)}
+                    placeholder="Ej. Black Friday Q4"
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-mono text-zinc-500 uppercase mb-2">Cliente / Marca</label>
+                  <select 
+                    value={selectedClientId}
+                    onChange={e => setSelectedClientId(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors mb-2"
+                  >
+                    <option value="new">+ Crear nuevo cliente...</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                  
+                  {selectedClientId === 'new' && (
+                    <input 
+                      type="text"
+                      value={newClientName}
+                      onChange={e => setNewClientName(e.target.value)}
+                      placeholder="Nombre del nuevo cliente"
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  )}
+                </div>
+                
+                <button
+                  onClick={handleSaveArchive}
+                  disabled={savingCampaign}
+                  className="w-full mt-2 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {savingCampaign ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                  Confirmar y Guardar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
