@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCampaignStore, SelectedVideoMeta } from '@/store/useCampaignStore';
 import { CampaignWorkspace } from '@/lib/geminiService';
+import { generateVideoPrompt } from '@/lib/groqService';
 import { toast } from 'sonner';
 import { 
   InstagramReelPreview, 
@@ -119,8 +120,54 @@ export default function SocialLab() {
   const [activeAssetIndex, setActiveAssetIndex] = useState(0);
   const [videoStarted, setVideoStarted] = useState(false);
   
+  // Prompt Generator State
+  const [generatingDuration, setGeneratingDuration] = useState<string | null>(null);
+  const [generatedPrompts, setGeneratedPrompts] = useState<Record<string, string>>({});
+
+  const handleGeneratePrompt = async (duration: '10s' | '30s' | '60s') => {
+    if (!currentAsset) return;
+    setGeneratingDuration(duration);
+    try {
+      const prompt = await generateVideoPrompt(duration, platform, {
+        hook: currentAsset.hook,
+        narrative_body: currentAsset.narrative_body,
+        call_to_action: currentAsset.call_to_action
+      });
+      setGeneratedPrompts(prev => ({ ...prev, [duration]: prompt }));
+      
+      // Attempt to save as campaign_asset if campaign exists and we are not in mock
+      if (campaign?.id) {
+        await supabase.from('campaign_assets').insert({
+          campaign_id: campaign.id,
+          tipo: 'video_prompt',
+          duracion: duration,
+          contenido: prompt
+        });
+      }
+      toast.success(`Prompt de ${duration} generado con éxito`);
+    } catch (err: any) {
+      toast.error('Error generando prompt: ' + err.message);
+    } finally {
+      setGeneratingDuration(null);
+    }
+  };
+
+  const handleExportPrompts = () => {
+    const text = Object.entries(generatedPrompts).map(([dur, prompt]) => `--- PROMPT ${dur} ---\n${prompt}`).join('\n\n');
+    if (!text) return toast.info('No hay prompts generados para exportar');
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Prompts_${platform}_${campaign?.id || 'export'}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  
   // Save Campaign state
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('new');
   const [newClientName, setNewClientName] = useState('');
@@ -562,6 +609,58 @@ export default function SocialLab() {
             <div className="p-4 bg-black/40 border border-white/5 rounded-xl font-mono text-xs text-zinc-400 leading-relaxed max-h-[250px] overflow-y-auto custom-scrollbar">
               {currentAsset?.visual_description || 'Procesando prompt visual...'}
             </div>
+          </motion.div>
+
+          {/* Generador de Prompts Multi-Duración */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-zinc-900/50 border border-indigo-500/20 p-5 rounded-2xl w-full mb-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-zinc-200 text-sm font-bold flex items-center gap-2">
+                <Video size={16} className="text-indigo-400" /> Generador de Guiones de Video
+              </p>
+              {Object.keys(generatedPrompts).length > 0 && (
+                <button
+                  onClick={handleExportPrompts}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold rounded-lg transition-colors border border-white/10"
+                >
+                  <Upload size={12} className="text-indigo-400" /> Exportar Todos
+                </button>
+              )}
+            </div>
+            
+            <div className="flex gap-2 mb-4">
+              {(['10s', '30s', '60s'] as const).map(dur => (
+                <button
+                  key={dur}
+                  onClick={() => handleGeneratePrompt(dur)}
+                  disabled={generatingDuration !== null}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border ${
+                    generatedPrompts[dur] 
+                      ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' 
+                      : 'bg-zinc-800 border-white/5 hover:bg-zinc-700 hover:border-indigo-500/30'
+                  } disabled:opacity-50`}
+                >
+                  {generatingDuration === dur ? (
+                    <span className="flex items-center justify-center gap-2"><Loader2 size={12} className="animate-spin" /> Generando...</span>
+                  ) : (
+                    `Generar ${dur}`
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {Object.entries(generatedPrompts).map(([dur, prompt]) => (
+              <div key={dur} className="mb-4 last:mb-0">
+                <div className="flex items-center justify-between bg-zinc-900 px-3 py-2 rounded-t-lg border-t border-l border-r border-white/10">
+                  <span className="text-[10px] font-mono text-indigo-400 font-bold uppercase">Prompt {dur}</span>
+                  <button onClick={() => handleCopy(prompt, `Prompt ${dur}`)} className="text-zinc-500 hover:text-white transition-colors">
+                    <Copy size={12} />
+                  </button>
+                </div>
+                <div className="p-3 bg-black/60 border border-white/10 rounded-b-lg font-mono text-[10px] text-zinc-400 whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar">
+                  {prompt}
+                </div>
+              </div>
+            ))}
           </motion.div>
 
           {/* Structured Visual Description (Only for Legacy if it matches the format) */}
