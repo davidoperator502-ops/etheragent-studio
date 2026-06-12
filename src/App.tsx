@@ -17,6 +17,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const Login = lazy(() => import('./pages/Login'));
 const Prototypes = lazy(() => import('./pages/Prototypes'));
 const ClientPortal = lazy(() => import('./pages/ClientPortal'));
+const PreviewGallery = lazy(() => import('./pages/PreviewGallery'));
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
                     <Route path="/prototypes" element={<Prototypes />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/c/:slug" element={<ClientPortal />} />
+                    {import.meta.env.DEV && <Route path="/preview-gallery" element={<PreviewGallery />} />}
                     <Route path="/subscription" element={<Navigate to="/dashboard/subscription" replace />} />
                     <Route path="/executive-demo" element={<Navigate to="/dashboard/executive-demo" replace />} />
                     <Route path="*" element={<NotFound />} />

@@ -196,17 +196,19 @@ export const YouTubeShortPreview: React.FC<PreviewProps> = ({ hasMedia, asset })
 );
 
 export const InstagramFeedPreview: React.FC<PreviewProps> = ({ asset }) => (
-  <div className="absolute inset-0 flex flex-col bg-black">
-    <StatusBar />
-    <div className="flex items-center justify-between px-3 py-2.5 bg-black">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <IgAvatar size={32} />
-        <div className="flex flex-col leading-tight min-w-0">
-          <span className="text-white text-[13px] font-semibold truncate">etheragent</span>
-          <span className="text-zinc-500 text-[11px]">Publicidad</span>
+  <div className="absolute inset-0 flex flex-col">
+    <div className="bg-black">
+      <StatusBar />
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <IgAvatar size={32} />
+          <div className="flex flex-col leading-tight min-w-0">
+            <span className="text-white text-[13px] font-semibold truncate">etheragent</span>
+            <span className="text-zinc-500 text-[11px]">Publicidad</span>
+          </div>
         </div>
+        <MoreHorizontal size={18} className="text-white shrink-0" />
       </div>
-      <MoreHorizontal size={18} className="text-white shrink-0" />
     </div>
 
     {/* Media window — base media layer shows through here */}
@@ -267,8 +269,10 @@ export const InstagramStoryPreview: React.FC<PreviewProps> = () => (
 );
 
 export const LinkedInPreview: React.FC<PreviewProps> = ({ asset }) => (
-  <div className="absolute inset-0 flex flex-col bg-white">
-    <StatusBar tone="dark" />
+  <div className="absolute inset-0 flex flex-col">
+    <div className="bg-white">
+      <StatusBar tone="dark" />
+    </div>
     <div className="flex flex-col px-4 pt-2 pb-3 bg-white">
       <div className="flex items-start gap-3 mb-3">
         <div className="w-12 h-12 bg-[#0a66c2] flex items-center justify-center rounded text-white font-bold text-xl shrink-0">EA</div>
@@ -307,9 +311,10 @@ export const LinkedInPreview: React.FC<PreviewProps> = ({ asset }) => (
 );
 
 export const TwitterPreview: React.FC<PreviewProps> = ({ asset }) => (
-  <div className="absolute inset-0 flex flex-col bg-black">
-    <StatusBar />
-    <div className="px-4 pt-2 flex items-start gap-3 bg-black">
+  <div className="absolute inset-0 flex flex-col">
+    <div className="bg-black">
+      <StatusBar />
+      <div className="px-4 pt-2 flex items-start gap-3">
       <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white font-bold text-xs shrink-0">EA</div>
       <div className="flex flex-col flex-1 min-w-0">
         <div className="flex items-center justify-between">
@@ -324,12 +329,13 @@ export const TwitterPreview: React.FC<PreviewProps> = ({ asset }) => (
           {asset?.hook} <span className="text-[#1d9bf0]">#AI #Tech</span>
         </p>
       </div>
+      </div>
     </div>
 
     {/* Media window — base media layer shows through here */}
     <div className="flex-1 min-h-0 border-y border-zinc-800" />
 
-    <div className="flex items-center justify-between px-7 pt-3 pb-4 text-zinc-500">
+    <div className="flex items-center justify-between px-7 pt-3 pb-4 text-zinc-500 bg-black">
       <div className="flex items-center gap-1.5"><MessageCircle size={18} /><span className="text-xs">142</span></div>
       <div className="flex items-center gap-1.5"><Repeat2 size={18} /><span className="text-xs">1.2 mil</span></div>
       <div className="flex items-center gap-1.5"><Heart size={18} /><span className="text-xs">4.3 mil</span></div>
