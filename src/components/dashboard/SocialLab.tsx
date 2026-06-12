@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
-import { Sparkles, Zap, Loader2, Upload, Video, Image as ImageIcon, Heart, MessageCircle, Share2, MoreHorizontal, UserCircle2, Bookmark, Send, Play, ArrowRight, Brain, Copy, Eye, Clapperboard, CheckCircle2, X, FileUp } from 'lucide-react';
+import { Sparkles, Zap, Loader2, Upload, Video, Image as ImageIcon, UserCircle2, Bookmark, Play, ArrowRight, Brain, Copy, Eye, Clapperboard, CheckCircle2, X, FileUp, Instagram, Youtube, Linkedin, Twitter, Music2, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCampaignStore, SelectedVideoMeta } from '@/store/useCampaignStore';
@@ -107,6 +107,41 @@ function buildMasterPrompt(asset: CampaignAsset): string {
     asset.pacing_notes,
   ];
   return lines.join('\n');
+}
+
+const PLATFORMS = [
+  { id: 'instagram', label: 'Instagram', Icon: Instagram },
+  { id: 'tiktok', label: 'TikTok', Icon: Music2 },
+  { id: 'youtube', label: 'YouTube', Icon: Youtube },
+  { id: 'linkedin', label: 'LinkedIn', Icon: Linkedin },
+  { id: 'twitter', label: 'X', Icon: Twitter },
+] as const;
+
+const DURATIONS = [
+  { id: '10s' as const, scenes: '~5 escenas' },
+  { id: '30s' as const, scenes: '~10 escenas' },
+  { id: '60s' as const, scenes: '~15 escenas' },
+];
+
+// Renders a generated video prompt with a lightweight "syntax" feel:
+// uppercase section headers (HOOK:, VOICEOVER:, ...) in emerald, body in zinc.
+function HighlightedPrompt({ text }: { text: string }) {
+  return (
+    <>
+      {text.split('\n').map((line, i) => {
+        const trimmed = line.trim();
+        const isHeader = /^[A-Z][A-Z0-9 &/]*:?\s*$/.test(trimmed) && trimmed.length > 1;
+        const isMeta = /^==.*==$/.test(trimmed);
+        if (isMeta) {
+          return <div key={i} className="text-emerald-500/70 font-bold tracking-widest">{line || ' '}</div>;
+        }
+        if (isHeader) {
+          return <div key={i} className="text-emerald-400 font-bold tracking-wide mt-2 first:mt-0">{line}</div>;
+        }
+        return <div key={i} className="text-zinc-300">{line || ' '}</div>;
+      })}
+    </>
+  );
 }
 
 export default function SocialLab() {
@@ -446,9 +481,9 @@ export default function SocialLab() {
 
   const sectionColors: Record<string, string> = {
     'HOOK': 'border-l-emerald-500 bg-emerald-500/5',
-    'DESARROLLO': 'border-l-indigo-500 bg-indigo-500/5',
-    'OUTRO': 'border-l-amber-500 bg-amber-500/5',
-    'OUTRO / BUCLE': 'border-l-amber-500 bg-amber-500/5',
+    'DESARROLLO': 'border-l-zinc-600 bg-zinc-500/5',
+    'OUTRO': 'border-l-emerald-500/50 bg-emerald-500/5',
+    'OUTRO / BUCLE': 'border-l-emerald-500/50 bg-emerald-500/5',
   };
 
   const sectionLabels: Record<string, string> = {
@@ -524,20 +559,12 @@ export default function SocialLab() {
               <span className="text-emerald-500 text-[10px] font-mono tracking-widest uppercase">Campaña: {new URL(campaign.target_url).hostname}</span>
             </div>
             {currentAsset && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsSaveModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400 text-xs font-bold rounded-xl transition-all active:scale-95 border border-indigo-500/30"
-                >
-                  <Bookmark size={14} /> Guardar Campaña
-                </button>
-                <button
-                  onClick={handleCopyMaster}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold rounded-xl transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-                >
-                  <Clapperboard size={14} /> Copiar Prompt Maestro
-                </button>
-              </div>
+              <button
+                onClick={() => setIsSaveModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg transition-all duration-200 active:scale-95 border border-emerald-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+              >
+                <Bookmark size={14} /> Guardar Campaña
+              </button>
             )}
           </div>
 
@@ -596,7 +623,7 @@ export default function SocialLab() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-zinc-900/50 border border-white/5 p-5 rounded-2xl w-full mb-5 group relative">
             <div className="flex items-center justify-between mb-3">
               <p className="text-zinc-300 text-sm font-medium flex items-center gap-2">
-                <Video size={14} className="text-indigo-400" /> Estrategia Creativa Procesada
+                <Video size={14} className="text-emerald-500" /> Estrategia Creativa Procesada
               </p>
               <button 
                 onClick={() => currentAsset && handleCopy(currentAsset.visual_description, 'Visual Description')}
@@ -612,52 +639,69 @@ export default function SocialLab() {
           </motion.div>
 
           {/* Generador de Prompts Multi-Duración */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-zinc-900/50 border border-indigo-500/20 p-5 rounded-2xl w-full mb-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-zinc-200 text-sm font-bold flex items-center gap-2">
-                <Video size={16} className="text-indigo-400" /> Generador de Guiones de Video
-              </p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-zinc-900/50 border border-emerald-500/20 p-5 rounded-xl w-full mb-5">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <Wand2 size={16} className="text-emerald-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-zinc-100 text-sm font-bold leading-tight">Generador de Guiones de Video</p>
+                  <p className="text-zinc-500 text-xs mt-0.5">Guiones listos para producción en 3 duraciones</p>
+                </div>
+              </div>
               {Object.keys(generatedPrompts).length > 0 && (
                 <button
                   onClick={handleExportPrompts}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold rounded-lg transition-colors border border-white/10"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg transition-all duration-200 border border-emerald-500/30 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                 >
-                  <Upload size={12} className="text-indigo-400" /> Exportar Todos
+                  <Upload size={12} /> Exportar
                 </button>
               )}
             </div>
-            
-            <div className="flex gap-2 mb-4">
-              {(['10s', '30s', '60s'] as const).map(dur => (
-                <button
-                  key={dur}
-                  onClick={() => handleGeneratePrompt(dur)}
-                  disabled={generatingDuration !== null}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border ${
-                    generatedPrompts[dur] 
-                      ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' 
-                      : 'bg-zinc-800 border-white/5 hover:bg-zinc-700 hover:border-indigo-500/30'
-                  } disabled:opacity-50`}
-                >
-                  {generatingDuration === dur ? (
-                    <span className="flex items-center justify-center gap-2"><Loader2 size={12} className="animate-spin" /> Generando...</span>
-                  ) : (
-                    `Generar ${dur}`
-                  )}
-                </button>
-              ))}
+
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
+              {DURATIONS.map(({ id: dur, scenes }) => {
+                const done = !!generatedPrompts[dur];
+                const busy = generatingDuration === dur;
+                return (
+                  <button
+                    key={dur}
+                    onClick={() => handleGeneratePrompt(dur)}
+                    disabled={generatingDuration !== null}
+                    className={`relative flex flex-col items-center justify-center gap-1 py-4 rounded-lg border transition-all duration-200 active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
+                      done
+                        ? 'bg-emerald-500/10 border-emerald-500/40'
+                        : 'bg-zinc-800/60 border-white/5 hover:bg-zinc-800 hover:border-emerald-500/30'
+                    }`}
+                  >
+                    {done && !busy && (
+                      <CheckCircle2 size={14} className="absolute top-2 right-2 text-emerald-400" />
+                    )}
+                    {busy ? (
+                      <Loader2 size={20} className="animate-spin text-emerald-400" />
+                    ) : (
+                      <span className={`text-xl font-black tracking-tight ${done ? 'text-emerald-300' : 'text-zinc-200'}`}>{dur}</span>
+                    )}
+                    <span className="text-[10px] text-zinc-500 tracking-wide">{busy ? 'Generando…' : scenes}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {Object.entries(generatedPrompts).map(([dur, prompt]) => (
-              <div key={dur} className="mb-4 last:mb-0">
-                <div className="flex items-center justify-between bg-zinc-900 px-3 py-2 rounded-t-lg border-t border-l border-r border-white/10">
-                  <span className="text-[10px] font-mono text-indigo-400 font-bold uppercase">Prompt {dur}</span>
-                  <button onClick={() => handleCopy(prompt, `Prompt ${dur}`)} className="text-zinc-500 hover:text-white transition-colors">
-                    <Copy size={12} />
+              <div key={dur} className="mb-3 last:mb-0 rounded-lg overflow-hidden border border-white/10">
+                <div className="sticky top-0 flex items-center justify-between bg-zinc-900 px-3 py-2 border-b border-white/10">
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-widest">Prompt {dur}</span>
+                  <button
+                    onClick={() => handleCopy(prompt, `Prompt ${dur}`)}
+                    className="flex items-center gap-1.5 text-zinc-500 hover:text-emerald-400 transition-colors duration-200 text-[10px] font-mono uppercase tracking-wider"
+                  >
+                    <Copy size={12} /> Copiar
                   </button>
                 </div>
-                <div className="p-3 bg-black/60 border border-white/10 rounded-b-lg font-mono text-[10px] text-zinc-400 whitespace-pre-wrap max-h-40 overflow-y-auto custom-scrollbar">
-                  {prompt}
+                <div className="p-3 bg-black/60 font-mono text-[10px] leading-relaxed whitespace-pre-wrap max-h-44 overflow-y-auto custom-scrollbar">
+                  <HighlightedPrompt text={prompt} />
                 </div>
               </div>
             ))}
@@ -674,7 +718,7 @@ export default function SocialLab() {
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${
                       section.label === 'HOOK' ? 'text-emerald-400' :
-                      section.label === 'DESARROLLO' ? 'text-indigo-400' : 'text-amber-400'
+                      section.label === 'DESARROLLO' ? 'text-zinc-400' : 'text-emerald-400/70'
                     }`}>
                       {sectionLabels[section.label] || section.label}
                     </span>
@@ -699,16 +743,16 @@ export default function SocialLab() {
                     }
                     if (textMatch) {
                       return (
-                        <p key={j} className="text-xs text-indigo-300 leading-relaxed mb-1.5 pl-0">
-                          <span className="text-indigo-400 font-mono text-[10px] uppercase tracking-wider mr-2">📝 Texto:</span>
+                        <p key={j} className="text-xs text-zinc-200 leading-relaxed mb-1.5 pl-0">
+                          <span className="text-zinc-400 font-mono text-[10px] uppercase tracking-wider mr-2">📝 Texto:</span>
                           "{textMatch[1]}"
                         </p>
                       );
                     }
                     if (sfxMatch) {
                       return (
-                        <p key={j} className="text-xs text-amber-300/80 leading-relaxed mb-1.5 pl-0">
-                          <span className="text-amber-400 font-mono text-[10px] uppercase tracking-wider mr-2">🔊 SFX:</span>
+                        <p key={j} className="text-xs text-zinc-300/80 leading-relaxed mb-1.5 pl-0">
+                          <span className="text-zinc-400 font-mono text-[10px] uppercase tracking-wider mr-2">🔊 SFX:</span>
                           {sfxMatch[1]}
                         </p>
                       );
@@ -731,16 +775,16 @@ export default function SocialLab() {
                     }
                     if (musicMatch) {
                       return (
-                        <p key={j} className="text-xs text-violet-300/80 leading-relaxed mb-1.5 pl-0">
-                          <span className="text-violet-400 font-mono text-[10px] uppercase tracking-wider mr-2">🎵 Música:</span>
+                        <p key={j} className="text-xs text-zinc-300/90 leading-relaxed mb-1.5 pl-0">
+                          <span className="text-zinc-400 font-mono text-[10px] uppercase tracking-wider mr-2">🎵 Música:</span>
                           {musicMatch[1]}
                         </p>
                       );
                     }
                     if (hookMatch) {
                       return (
-                        <p key={j} className="text-xs text-pink-300/80 font-medium leading-relaxed mb-1.5 pl-0">
-                          <span className="text-pink-400 font-mono text-[10px] uppercase tracking-wider mr-2">🪝 Hook:</span>
+                        <p key={j} className="text-xs text-emerald-300/90 font-medium leading-relaxed mb-1.5 pl-0">
+                          <span className="text-emerald-400 font-mono text-[10px] uppercase tracking-wider mr-2">🪝 Hook:</span>
                           {hookMatch[1]}
                         </p>
                       );
@@ -787,7 +831,7 @@ export default function SocialLab() {
                       <h5 className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest mb-1.5">Textos Destacados</h5>
                       <div className="flex flex-wrap gap-1.5">
                         {currentAsset.on_screen_text.map((t: string, i: number) => (
-                          <span key={i} className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded text-[9px] text-indigo-300 font-mono">"{t}"</span>
+                          <span key={i} className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[9px] text-emerald-300 font-mono">"{t}"</span>
                         ))}
                       </div>
                     </div>
@@ -813,8 +857,8 @@ export default function SocialLab() {
           {data.audience && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-zinc-900/50 border border-white/5 p-5 rounded-2xl w-full mt-4">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                  <UserCircle2 size={16} className="text-indigo-400" />
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <UserCircle2 size={16} className="text-emerald-400" />
                 </div>
                 <div>
                   <p className="text-zinc-200 text-sm font-semibold mb-1">Target Persona: {data.audience.persona}</p>
@@ -838,39 +882,50 @@ export default function SocialLab() {
           </button>
         </div>
 
-        {/* Platform Selector */}
-        <div className="w-[280px] sm:w-[300px] md:w-[340px] flex flex-wrap gap-1.5 mb-2">
-          {(['instagram', 'tiktok', 'youtube', 'linkedin', 'twitter'] as const).map(p => (
-            <button key={p} onClick={() => setPlatform(p)} className={`px-3 py-1.5 min-h-[32px] rounded-md text-[10px] font-mono uppercase transition-all active:scale-95 ${platform === p ? 'bg-emerald-500 text-black font-bold' : 'bg-[#111] text-zinc-500 border border-white/5 hover:bg-zinc-800'}`}>
-              {p}
-            </button>
-          ))}
+        {/* Platform Selector — single horizontal row, scroll-x with hidden scrollbar */}
+        <div className="w-[280px] sm:w-[300px] md:w-[340px] mb-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-1.5 w-max">
+            {PLATFORMS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setPlatform(id)}
+                className={`flex items-center gap-1.5 px-3 py-2 min-h-[36px] rounded-full text-[11px] font-semibold whitespace-nowrap transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
+                  platform === id
+                    ? 'bg-emerald-500 text-black'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200'
+                }`}
+              >
+                <Icon size={13} /> {label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Format Selector (Contextual) */}
-        {platform === 'instagram' && (
+        {/* Format Selector (only platforms with multiple native formats) */}
+        {platform === 'instagram' ? (
           <div className="w-[280px] sm:w-[300px] md:w-[340px] flex gap-1.5 mb-4">
             {(['reel', 'feed', 'story'] as const).map(fmt => (
-              <button key={fmt} onClick={() => setVideoFormat(fmt)} className={`flex-1 py-1.5 min-h-[32px] rounded-md text-[10px] font-mono uppercase transition-all active:scale-95 ${videoFormat === fmt ? 'bg-zinc-700 text-white font-bold' : 'bg-[#111] text-zinc-500 border border-white/5 hover:bg-zinc-800'}`}>
+              <button
+                key={fmt}
+                onClick={() => setVideoFormat(fmt)}
+                className={`flex-1 py-2 min-h-[34px] rounded-lg text-[10px] font-mono uppercase tracking-widest transition-all duration-200 active:scale-95 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
+                  videoFormat === fmt
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 font-bold'
+                    : 'bg-zinc-900 border-white/5 text-zinc-500 hover:bg-zinc-800'
+                }`}
+              >
                 {fmt}
               </button>
             ))}
           </div>
+        ) : (
+          <div className="mb-4" />
         )}
-        {platform === 'youtube' && (
-          <div className="w-[280px] sm:w-[300px] md:w-[340px] flex gap-1.5 mb-4">
-            {(['short'] as const).map(fmt => (
-              <button key={fmt} onClick={() => setVideoFormat(fmt)} className={`flex-1 py-1.5 min-h-[32px] rounded-md text-[10px] font-mono uppercase transition-all active:scale-95 ${videoFormat === fmt ? 'bg-zinc-700 text-white font-bold' : 'bg-[#111] text-zinc-500 border border-white/5 hover:bg-zinc-800'}`}>
-                {fmt}
-              </button>
-            ))}
-          </div>
-        )}
-        {platform !== 'instagram' && platform !== 'youtube' && <div className="mb-4" />}
 
         {/* Phone Frame with Video Player */}
-        <div className="relative w-[280px] sm:w-[300px] md:w-[340px] h-[560px] sm:h-[640px] md:h-[720px] bg-black border-[6px] sm:border-[8px] border-[#1c1c1e] rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden flex flex-col shrink-0">
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-7 bg-black rounded-full z-50" />
+        <div className="relative w-[280px] sm:w-[300px] md:w-[340px] h-[560px] sm:h-[640px] md:h-[720px] bg-black border-[6px] sm:border-[8px] border-[#1c1c1e] rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] ring-1 ring-white/5 overflow-hidden flex flex-col shrink-0">
+          {/* Dynamic island */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-50" />
 
           <div className="flex-1 relative w-full h-full bg-gradient-to-br from-zinc-900 to-black flex items-center justify-center overflow-hidden">
             <AnimatePresence mode="wait">
@@ -905,31 +960,21 @@ export default function SocialLab() {
                 </motion.div>
               ) : (
                 <motion.div key="placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center"
+                  className="absolute inset-0 flex flex-col items-center justify-center px-7 text-center"
                 >
-                  <div className="absolute inset-0 opacity-30">
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-emerald-500/20 via-indigo-500/10 to-transparent" />
-                    <div className="absolute bottom-0 right-0 w-2/3 h-2/3 bg-gradient-to-tl from-indigo-500/20 to-transparent blur-2xl" />
+                  {/* Subtle brand gradient */}
+                  <div className="absolute inset-0">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/15 via-zinc-900 to-black" />
+                    <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-3/4 h-1/2 bg-emerald-500/10 blur-3xl rounded-full" />
                   </div>
-                  <div className="relative z-10 flex flex-col items-center gap-4 max-w-[80%]">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-2">
-                      <Sparkles className="w-8 h-8 text-emerald-400" />
-                    </div>
-                    {currentAsset?.on_screen_text?.[0] && (
-                      <motion.div key={activeAssetIndex} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white text-black px-5 py-2.5 rounded-none font-black text-lg uppercase tracking-tighter italic transform -skew-x-6 shadow-[6px_6px_0px_rgba(16,185,129,0.5)] mb-3"
-                      >
-                        {currentAsset.on_screen_text[0]}
-                      </motion.div>
-                    )}
-                    <p className="text-xs text-zinc-400 leading-relaxed italic line-clamp-4">
-                      {currentAsset?.visual_description?.substring(0, 120) || 'Simulación visual de campaña'}...
+                  <div className="relative z-10 flex flex-col items-center gap-5 max-w-[88%]">
+                    <span className="text-emerald-400/80 text-[10px] font-mono tracking-[0.3em] uppercase">EtherAgent · Preview</span>
+                    <p className="text-white font-black text-2xl leading-tight tracking-tight line-clamp-4 [text-shadow:0_2px_12px_rgba(0,0,0,0.6)]">
+                      {currentAsset?.on_screen_text?.[0] || currentAsset?.hook || 'Tu campaña aquí'}
                     </p>
-                    {currentAsset?.call_to_action && (
-                      <div className="mt-3 px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
-                        <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest">{currentAsset.call_to_action}</span>
-                      </div>
-                    )}
+                    <p className="text-zinc-400/90 text-[11px] leading-relaxed line-clamp-2">
+                      Sube tu video renderizado para ver el preview real
+                    </p>
                   </div>
                 </motion.div>
               )}
@@ -960,23 +1005,6 @@ export default function SocialLab() {
               </div>
             )}
 
-            {/* Asset-type badge */}
-            {currentAsset?.video_url && (
-              <div className="absolute top-3 left-3 z-30 pointer-events-none flex items-center gap-2">
-                <span className="px-2.5 py-1 bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 rounded-full text-[8px] text-emerald-300 font-mono tracking-widest uppercase shadow-lg flex items-center gap-1">
-                  <CheckCircle2 size={8} /> {videoFormat === 'reel' ? 'Reel' : videoFormat === 'feed' ? 'Feed' : 'Story'}
-                </span>
-                {selectedVideo?.assetType && (
-                  <span className={`px-2.5 py-1 backdrop-blur-md border rounded-full text-[8px] font-mono tracking-widest uppercase shadow-lg ${
-                    selectedVideo.assetType === 'ai_generated'
-                      ? 'bg-indigo-500/20 border-indigo-400/30 text-indigo-300'
-                      : 'bg-emerald-500/20 border-emerald-400/30 text-emerald-300'
-                  }`}>
-                    🤖 {selectedVideo.assetType === 'ai_generated' ? 'Fal.ai' : 'Manual'}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
