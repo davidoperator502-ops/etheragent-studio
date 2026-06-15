@@ -39,10 +39,16 @@ La Fase 2 reveló que Social Lab **no genera** la campaña base: la produce **Ne
 
 ## ✅ Verificación
 - `tsc -b` typecheck ✅ · `npm run build` ✅ · dev server arranca ✅
-- Lint: 80 → 71 errores (mejoró −9, 0 nuevos; los restantes son preexistentes).
-- Tests: sin regresión (fallo preexistente en `api.test.ts` por URL relativa en jsdom, ajeno a este trabajo).
+- **Tests: 35 passing / 0 failing** (suite arreglada: antes 21 fallaban por `VITE_USE_MOCK=false` en `.env` + bloque `define` mal anidado en vitest). Incluye cobertura nueva del motor compartido (`promptEngine.test.ts`).
+- **Lint: 80 → 62 errores** (−18; los restantes son preexistentes en `api/*`, edge functions Deno y nodos React Flow, ajenos a la paridad — ver §debt).
 - **Smoke test manual en navegador: PASÓ en los 3 labs** (Social sin regresión; OOH y Commercial funcionales; `lab_type` correcto visible en `/dashboard/campaigns`).
 - Detalle en `docs/VERIFICATION.md` y `docs/SMOKE_TEST.md`.
+
+### Calidad adicional incluida en este PR
+- Suite de tests verde + tests del motor compartido (`buildMasterPrompt`, `labConfigs`, inyección de `labContext`).
+- `.env.test` (sin secretos, `VITE_USE_MOCK=true`) versionado para CI en modo mock.
+- Reducción de `no-explicit-any` en hooks de métricas, `groqService` y `PlatformPreviews`.
+- `supabase/migrations/README.md` documentando la deuda de migraciones legacy (no destructivo).
 
 ## 🗄️ Migraciones — ESTADO
 > ✅ **Las 2 migraciones YA fueron aplicadas a producción** (Supabase, proyecto "EtherAgent OS") antes/durante el smoke test, que validó upload, Guardar y Deploy en OOH y Commercial con `lab_type` persistido correctamente. El script combinado quedó documentado en `docs/APPLY_MIGRATIONS.sql` con sus queries de verificación.
@@ -51,7 +57,10 @@ La Fase 2 reveló que Social Lab **no genera** la campaña base: la produce **Ne
 `docs/AUDIT_REPORT.md`, `docs/SOCIAL_LAB_REFERENCE.md`, `docs/PARITY_PLAN.md`, `docs/VERIFICATION.md`, `docs/APPLY_MIGRATIONS.sql`, `docs/SMOKE_TEST.md`, `docs/PR_BODY.md`.
 
 ## 📌 Deuda preexistente (fuera del alcance de este PR)
-71 errores de lint `no-explicit-any`; `api.test.ts` (URL relativa en jsdom); migraciones legacy sin timestamp + trigger `on_auth_user_created` duplicado; SDK Google duplicado (`@google/genai` vs `@google/generative-ai`); RLS `SELECT` público en `visual_assets`; labs no equiparados (Sonic/Studio/Ads/Community — fuera del alcance solicitado).
+- 62 errores de lint `no-explicit-any` restantes en `api/*` (Vercel), edge functions Deno y nodos React Flow (no tocados por riesgo/poco valor).
+- Migraciones legacy sin timestamp + trigger `on_auth_user_created` duplicado → documentado en `supabase/migrations/README.md` (limpieza controlada, no destructiva).
+- SDK Google duplicado (`@google/genai` vs `@google/generative-ai`); RLS `SELECT` público en `visual_assets`.
+- **Labs no equiparados** (PerformanceAds/Sonic/Studio): no encajan con el motor de guiones de video (Ads = métricas, Sonic = audio, Studio = otro flujo). Fuera del alcance Social/OOH/Commercial; se dejan como follow-up dedicado para no entregar integraciones a medias.
 
 ## Commits
 ```
