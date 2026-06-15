@@ -1,60 +1,21 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
-import { Sparkles, Zap, Loader2, Upload, Video, Image as ImageIcon, UserCircle2, Bookmark, Play, ArrowRight, Brain, Copy, Eye, Clapperboard, CheckCircle2, X, FileUp, Instagram, Youtube, Linkedin, Twitter, Music2, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles, Zap, Loader2, Video, Image as ImageIcon, UserCircle2, Play, ArrowRight, Brain, Copy, Eye, Clapperboard, Instagram, Youtube, Linkedin, Twitter, Music2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
-import { useCampaignStore, SelectedVideoMeta } from '@/store/useCampaignStore';
-import { CampaignWorkspace } from '@/lib/geminiService';
-import { generateVideoPrompt } from '@/lib/groqService';
-import { toast } from 'sonner';
-import { 
-  InstagramReelPreview, 
-  InstagramFeedPreview, 
-  InstagramStoryPreview, 
-  TikTokPreview, 
+import { useCampaignStudio } from '@/hooks/useCampaignStudio';
+import { CampaignAsset } from '@/lib/prompt-engine/types';
+import { VideoScriptGenerator } from '@/components/campaign-studio/VideoScriptGenerator';
+import { CampaignUploader } from '@/components/campaign-studio/CampaignUploader';
+import { SaveCampaignButton } from '@/components/campaign-studio/SaveCampaignButton';
+import {
+  InstagramReelPreview,
+  InstagramFeedPreview,
+  InstagramStoryPreview,
+  TikTokPreview,
   YouTubeShortPreview,
   LinkedInPreview,
   TwitterPreview
 } from './previews/PlatformPreviews';
-
-interface CampaignAsset {
-  type: string;
-  duration: string;
-  hook: string;
-  narrative_body?: string;
-  voiceover_script: string;
-  visual_description: string;
-  on_screen_text: string[];
-  music_background: string;
-  sound_effects: string;
-  call_to_action: string;
-  emotional_tone: string;
-  pacing_notes: string;
-  video_url?: string;
-  thumbnail_url?: string;
-}
-
-type CampaignDataPayload = CampaignWorkspace & {
-  detected_sector?: string;
-  strategy_score?: number;
-  angles?: string[];
-  creative_rationale?: string;
-  assets?: CampaignAsset[];
-  audience?: { persona: string; psychographics: string; pain_points: string; desires: string; };
-  youtube_seo?: { video_title: string; video_description: string; hashtags: string[]; };
-  thumbnail_idea?: string;
-  video_url?: string;
-};
-
-interface CampaignRecord {
-  id: string;
-  target_url: string;
-  detected_sector: string;
-  strategy_score: number;
-  campaign_data: CampaignDataPayload;
-  created_at: string;
-}
 
 function parseVisualSections(markdown: string) {
   const sections: { label: string; time: string; lines: string[] }[] = [];
@@ -75,40 +36,6 @@ function parseVisualSections(markdown: string) {
   return sections;
 }
 
-function buildMasterPrompt(asset: CampaignAsset): string {
-  const lines = [
-    `## ${asset.type} (${asset.duration}s)`,
-    '',
-    `### Hook`,
-    asset.hook,
-    '',
-    `### Voiceover`,
-    asset.voiceover_script,
-    '',
-    `### Visual Description`,
-    asset.visual_description,
-    '',
-    `### Textos en pantalla`,
-    asset.on_screen_text.map(t => `- "${t}"`).join('\n'),
-    '',
-    `### Background Music`,
-    asset.music_background,
-    '',
-    `### Sound Effects`,
-    asset.sound_effects,
-    '',
-    `### Call to Action`,
-    asset.call_to_action,
-    '',
-    `### Emotional Tone`,
-    asset.emotional_tone,
-    '',
-    `### Pacing`,
-    asset.pacing_notes,
-  ];
-  return lines.join('\n');
-}
-
 const PLATFORMS = [
   { id: 'instagram', label: 'Instagram', Icon: Instagram },
   { id: 'tiktok', label: 'TikTok', Icon: Music2 },
@@ -117,365 +44,20 @@ const PLATFORMS = [
   { id: 'twitter', label: 'X', Icon: Twitter },
 ] as const;
 
-const DURATIONS = [
-  { id: '10s' as const, scenes: '~5 escenas' },
-  { id: '30s' as const, scenes: '~10 escenas' },
-  { id: '60s' as const, scenes: '~15 escenas' },
-];
-
-// Renders a generated video prompt with a lightweight "syntax" feel:
-// uppercase section headers (HOOK:, VOICEOVER:, ...) in emerald, body in zinc.
-function HighlightedPrompt({ text }: { text: string }) {
-  return (
-    <>
-      {text.split('\n').map((line, i) => {
-        const trimmed = line.trim();
-        const isHeader = /^[A-Z][A-Z0-9 &/]*:?\s*$/.test(trimmed) && trimmed.length > 1;
-        const isMeta = /^==.*==$/.test(trimmed);
-        if (isMeta) {
-          return <div key={i} className="text-emerald-500/70 font-bold tracking-widest">{line || ' '}</div>;
-        }
-        if (isHeader) {
-          return <div key={i} className="text-emerald-400 font-bold tracking-wide mt-2 first:mt-0">{line}</div>;
-        }
-        return <div key={i} className="text-zinc-300">{line || ' '}</div>;
-      })}
-    </>
-  );
-}
-
 export default function SocialLab() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { user } = useAuth();
-  const selectedVideo = useCampaignStore(state => state.selectedVideo);
+  const studio = useCampaignStudio('social');
+  const {
+    loading, campaign, campaignData, isNewFormat, currentAsset,
+    activeAssetIndex, setActiveAssetIndex, videoStarted, setVideoStarted,
+    mediaType, setMediaType, generatingDuration, generatedPrompts,
+    generatePrompt, exportPrompts, uploading, uploadFile,
+    copy, copyMaster, copyVisual, clients, fetchClients, savingCampaign, saveCampaign,
+  } = studio;
 
-  const [campaign, setCampaign] = useState<CampaignRecord | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeAssetIndex, setActiveAssetIndex] = useState(0);
-  const [videoStarted, setVideoStarted] = useState(false);
-  
-  // Prompt Generator State
-  const [generatingDuration, setGeneratingDuration] = useState<string | null>(null);
-  const [generatedPrompts, setGeneratedPrompts] = useState<Record<string, string>>({});
-
-  const handleGeneratePrompt = async (duration: '10s' | '30s' | '60s') => {
-    if (!currentAsset) return;
-    setGeneratingDuration(duration);
-    try {
-      const prompt = await generateVideoPrompt(duration, platform, {
-        hook: currentAsset.hook,
-        narrative_body: currentAsset.narrative_body,
-        call_to_action: currentAsset.call_to_action
-      });
-      setGeneratedPrompts(prev => ({ ...prev, [duration]: prompt }));
-      
-      // Attempt to save as campaign_asset if campaign exists and we are not in mock
-      if (campaign?.id) {
-        await supabase.from('campaign_assets').insert({
-          campaign_id: campaign.id,
-          tipo: 'video_prompt',
-          duracion: duration,
-          contenido: prompt
-        });
-      }
-      toast.success(`Prompt de ${duration} generado con éxito`);
-    } catch (err: any) {
-      toast.error('Error generando prompt: ' + err.message);
-    } finally {
-      setGeneratingDuration(null);
-    }
-  };
-
-  const handleExportPrompts = () => {
-    const text = Object.entries(generatedPrompts).map(([dur, prompt]) => `--- PROMPT ${dur} ---\n${prompt}`).join('\n\n');
-    if (!text) return toast.info('No hay prompts generados para exportar');
-    
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Prompts_${platform}_${campaign?.id || 'export'}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-  
-  // Save Campaign state
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-
-  const [clients, setClients] = useState<any[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>('new');
-  const [newClientName, setNewClientName] = useState('');
-  const [campaignName, setCampaignName] = useState('');
-  const [savingCampaign, setSavingCampaign] = useState(false);
-
-  const fetchClients = async () => {
-    if (!user) return;
-    const { data } = await supabase.from('clients').select('*').eq('user_id', user.id).order('nombre');
-    if (data) setClients(data);
-  };
-
-  const handleSaveArchive = async () => {
-    if (!user || !campaign) return;
-    if (!campaignName.trim()) return toast.error('El nombre de la campaña es requerido');
-    
-    setSavingCampaign(true);
-    try {
-      let finalClientId = selectedClientId;
-      
-      // Crear cliente si se eligió 'new'
-      if (selectedClientId === 'new') {
-        if (!newClientName.trim()) throw new Error('El nombre del cliente es requerido');
-        const slug = newClientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-        
-        const { data: newCli, error: cliErr } = await supabase
-          .from('clients')
-          .insert({ user_id: user.id, nombre: newClientName, slug: `${slug}-${Date.now().toString().slice(-4)}` })
-          .select().single();
-          
-        if (cliErr) throw new Error('Error al crear el cliente: ' + cliErr.message);
-        finalClientId = newCli.id;
-      }
-      
-      // Crear la campaña en el archivo
-      const { error: campErr } = await supabase.from('campaigns').insert({
-        user_id: user.id,
-        client_id: finalClientId,
-        nombre: campaignName,
-        plataforma: platform,
-        estado: 'draft',
-        contenido: { ...campaign.campaign_data, assets: currentAsset ? [currentAsset] : [] }
-      });
-      
-      if (campErr) throw new Error('Error al guardar la campaña: ' + campErr.message);
-      
-      toast.success('Campaña guardada en el archivo exitosamente');
-      setIsSaveModalOpen(false);
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setSavingCampaign(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isSaveModalOpen) fetchClients();
-  }, [isSaveModalOpen]);
-
-  useEffect(() => {
-    // Reset video state when switching assets
-    setVideoStarted(false);
-  }, [activeAssetIndex]);
-  const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
+  // Estado específico de social (selección de red y formato para los previews)
   const [platform, setPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'linkedin' | 'twitter'>('instagram');
   const [videoFormat, setVideoFormat] = useState<'reel' | 'feed' | 'story' | 'short'>('reel');
-  const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const setWorkspace = useCampaignStore(state => state.setWorkspace);
-  const setSelectedVideo = useCampaignStore(state => state.setSelectedVideo);
-
-  useEffect(() => {
-    const fetchCampaign = async () => {
-      if (!user) { setLoading(false); return; }
-      const campaignId = searchParams.get('campaign');
-      try {
-        let data, error;
-        if (campaignId) {
-          const res = await supabase.from('nexus_youtube_ads').select('*').eq('id', campaignId).single();
-          data = res.data;
-          error = res.error;
-        } else {
-          const res = await supabase.from('nexus_youtube_ads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
-          data = res.data;
-          error = res.error;
-        }
-        if (error && error.code !== 'PGRST116') throw error;
-        if (data) {
-          setCampaign(data as CampaignRecord);
-          // Sync with store for other components
-          setWorkspace(data.campaign_data);
-        }
-      } catch (err) {
-        console.error('Error fetching campaign:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCampaign();
-  }, [searchParams, user, setWorkspace]);
-
-  // Detectar si es el nuevo formato B2B o el antiguo
-  const campaignData = campaign?.campaign_data as CampaignDataPayload;
-  const isNewFormat = !!campaignData?.hook;
-
-  // Construir el asset base unificando ambas estructuras
-  const baseAsset = isNewFormat ? {
-    type: 'B2B Strategy',
-    duration: '30-60',
-    on_screen_text: campaignData.on_screen_text || [],
-    visual_description: campaignData.visual_description,
-    call_to_action: campaignData.call_to_action,
-    hook: campaignData.hook,
-    narrative_body: campaignData.narrative_body,
-    voiceover_script: campaignData.narrative_body, // Reutilizamos narrativa como voiceover
-    music_background: 'Ambient Tech / Corporate Modern',
-    sound_effects: 'UI Clicks, Digital Swish',
-    emotional_tone: 'Professional & Innovative',
-    pacing_notes: 'Dynamic & Precise',
-    video_url: null,
-    thumbnail_url: null
-  } : campaignData?.assets?.[activeAssetIndex];
-
-  // Override video_url if an asset was selected from the VisualMatrix
-  const currentAsset = baseAsset ? {
-    ...baseAsset,
-    video_url: selectedVideo?.url || baseAsset.video_url,
-    thumbnail_url: selectedVideo?.thumbnail || baseAsset.thumbnail_url
-  } : null;
-
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copiado al portapapeles`);
-  };
-
-  const handleCopyMaster = () => {
-    if (!currentAsset) return;
-    const prompt = buildMasterPrompt(currentAsset);
-    handleCopy(prompt, 'Prompt Maestro');
-  };
-
-  const uploadVideo = useCallback(async (file: File) => {
-    if (!campaign || !currentAsset || !user) return;
-    setUploading(true);
-    try {
-      const ext = file.name.split('.').pop() || 'mp4';
-      const timestamp = Date.now();
-      const safeType = (currentAsset.type || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const filePath = `social/${campaign.id}/${safeType}_${timestamp}_${safeName}`;
-
-      // 1. Upload to campaign_assets (primary) with fallback to visual-assets
-      const { error: uploadError } = await supabase.storage
-        .from('campaign_assets')
-        .upload(filePath, file);
-
-      let publicUrl: string;
-      if (uploadError) {
-        if (uploadError.message?.includes('bucket') || uploadError.message?.includes('not found')) {
-          const legacyPath = `social_${campaign.id}_${timestamp}.${ext}`;
-          const { error: legacyError } = await supabase.storage
-            .from('visual-assets')
-            .upload(legacyPath, file);
-          if (legacyError) {
-            if (legacyError.message?.includes('policy') || legacyError.message?.includes('row-level')) {
-              throw new Error('Permiso denegado. Asegúrate de estar autenticado.');
-            }
-            throw legacyError;
-          }
-          publicUrl = supabase.storage.from('visual-assets').getPublicUrl(legacyPath).data.publicUrl;
-        } else {
-          throw uploadError;
-        }
-      } else {
-        publicUrl = supabase.storage.from('campaign_assets').getPublicUrl(filePath).data.publicUrl;
-      }
-
-      // 2. Build metadata and save to visual_assets table
-      const assetId = `social_${campaign.id}_${safeType}_${timestamp}`;
-      const meta: SelectedVideoMeta = {
-        url: publicUrl,
-        thumbnail: publicUrl,
-        assetId,
-        assetType: 'uploaded',
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-      };
-
-      await supabase.from('visual_assets').upsert({
-        id: assetId,
-        url: publicUrl,
-        user_id: user.id,
-        campaign_id: campaign.id,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        asset_type: 'uploaded',
-        thumbnail_url: publicUrl,
-        bucket_path: filePath,
-        updated_at: new Date(),
-      });
-
-      // 3. Bridge to Zustand so phone mockup renders immediately
-      setSelectedVideo(meta);
-
-      // 4. Also persist video_url into campaign (graceful if RLS blocks)
-      let updatedCampaignData;
-      if (isNewFormat) {
-        updatedCampaignData = { ...campaign.campaign_data, video_url: publicUrl };
-      } else {
-        const updatedAssets = (campaign.campaign_data as any).assets.map((a: any, i: number) =>
-          i === activeAssetIndex ? { ...a, video_url: publicUrl } : a
-        );
-        updatedCampaignData = { ...campaign.campaign_data, assets: updatedAssets };
-      }
-
-      const { error: updateError } = await supabase
-        .from('nexus_youtube_ads')
-        .update({ campaign_data: updatedCampaignData })
-        .eq('id', campaign.id);
-
-      if (updateError) {
-        console.warn('nexus_youtube_ads update skipped (RLS or network):', updateError.message);
-      } else {
-        setCampaign({ ...campaign, campaign_data: updatedCampaignData as any });
-      }
-
-      toast.success('Video subido y listo en tu campaña');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al subir video';
-      console.error('Upload error:', message);
-      toast.error(message);
-    } finally {
-      setUploading(false);
-    }
-  }, [campaign, currentAsset, activeAssetIndex, user, isNewFormat, setSelectedVideo]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.type.startsWith('video/')) setMediaType('video');
-      else if (file.type.startsWith('image/')) setMediaType('image');
-      uploadVideo(file);
-    }
-    e.target.value = '';
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    if (file.type.startsWith('video/') || file.type.startsWith('image/')) {
-      if (file.type.startsWith('video/')) setMediaType('video');
-      else setMediaType('image');
-      uploadVideo(file);
-    } else {
-      toast.error('Solo se permiten archivos de video o imagen');
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-  };
 
   const sections = currentAsset ? parseVisualSections(currentAsset.visual_description) : [];
 
@@ -559,12 +141,13 @@ export default function SocialLab() {
               <span className="text-emerald-500 text-[10px] font-mono tracking-widest uppercase">Campaña: {new URL(campaign.target_url).hostname}</span>
             </div>
             {currentAsset && (
-              <button
-                onClick={() => setIsSaveModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg transition-all duration-200 active:scale-95 border border-emerald-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
-              >
-                <Bookmark size={14} /> Guardar Campaña
-              </button>
+              <SaveCampaignButton
+                surface={platform}
+                clients={clients}
+                saving={savingCampaign}
+                fetchClients={fetchClients}
+                onSave={saveCampaign}
+              />
             )}
           </div>
 
@@ -625,8 +208,8 @@ export default function SocialLab() {
               <p className="text-zinc-300 text-sm font-medium flex items-center gap-2">
                 <Video size={14} className="text-emerald-500" /> Estrategia Creativa Procesada
               </p>
-              <button 
-                onClick={() => currentAsset && handleCopy(currentAsset.visual_description, 'Visual Description')}
+              <button
+                onClick={() => currentAsset && copy(currentAsset.visual_description, 'Visual Description')}
                 className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-white/5 rounded-lg text-zinc-500 hover:text-white"
                 title="Copiar Prompt"
               >
@@ -639,73 +222,13 @@ export default function SocialLab() {
           </motion.div>
 
           {/* Generador de Prompts Multi-Duración */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-zinc-900/50 border border-emerald-500/20 p-5 rounded-xl w-full mb-5">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                  <Wand2 size={16} className="text-emerald-400" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-zinc-100 text-sm font-bold leading-tight">Generador de Guiones de Video</p>
-                  <p className="text-zinc-500 text-xs mt-0.5">Guiones listos para producción en 3 duraciones</p>
-                </div>
-              </div>
-              {Object.keys(generatedPrompts).length > 0 && (
-                <button
-                  onClick={handleExportPrompts}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg transition-all duration-200 border border-emerald-500/30 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
-                >
-                  <Upload size={12} /> Exportar
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2.5 mb-4">
-              {DURATIONS.map(({ id: dur, scenes }) => {
-                const done = !!generatedPrompts[dur];
-                const busy = generatingDuration === dur;
-                return (
-                  <button
-                    key={dur}
-                    onClick={() => handleGeneratePrompt(dur)}
-                    disabled={generatingDuration !== null}
-                    className={`relative flex flex-col items-center justify-center gap-1 py-4 rounded-lg border transition-all duration-200 active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
-                      done
-                        ? 'bg-emerald-500/10 border-emerald-500/40'
-                        : 'bg-zinc-800/60 border-white/5 hover:bg-zinc-800 hover:border-emerald-500/30'
-                    }`}
-                  >
-                    {done && !busy && (
-                      <CheckCircle2 size={14} className="absolute top-2 right-2 text-emerald-400" />
-                    )}
-                    {busy ? (
-                      <Loader2 size={20} className="animate-spin text-emerald-400" />
-                    ) : (
-                      <span className={`text-xl font-black tracking-tight ${done ? 'text-emerald-300' : 'text-zinc-200'}`}>{dur}</span>
-                    )}
-                    <span className="text-[10px] text-zinc-500 tracking-wide">{busy ? 'Generando…' : scenes}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {Object.entries(generatedPrompts).map(([dur, prompt]) => (
-              <div key={dur} className="mb-3 last:mb-0 rounded-lg overflow-hidden border border-white/10">
-                <div className="sticky top-0 flex items-center justify-between bg-zinc-900 px-3 py-2 border-b border-white/10">
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-widest">Prompt {dur}</span>
-                  <button
-                    onClick={() => handleCopy(prompt, `Prompt ${dur}`)}
-                    className="flex items-center gap-1.5 text-zinc-500 hover:text-emerald-400 transition-colors duration-200 text-[10px] font-mono uppercase tracking-wider"
-                  >
-                    <Copy size={12} /> Copiar
-                  </button>
-                </div>
-                <div className="p-3 bg-black/60 font-mono text-[10px] leading-relaxed whitespace-pre-wrap max-h-44 overflow-y-auto custom-scrollbar">
-                  <HighlightedPrompt text={prompt} />
-                </div>
-              </div>
-            ))}
-          </motion.div>
+          <VideoScriptGenerator
+            generatedPrompts={generatedPrompts}
+            generatingDuration={generatingDuration}
+            onGenerate={(dur) => generatePrompt(dur, platform)}
+            onExport={() => exportPrompts(platform)}
+            onCopy={copy}
+          />
 
           {/* Structured Visual Description (Only for Legacy if it matches the format) */}
           {!isNewFormat && currentAsset && sections.length > 0 && (
@@ -844,10 +367,10 @@ export default function SocialLab() {
           {/* Copy buttons */}
           {currentAsset && (
             <div className="flex gap-3">
-              <button onClick={handleCopyMaster} className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-all active:scale-95">
+              <button onClick={copyMaster} className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-all active:scale-95">
                 <Clapperboard size={14} /> Copiar Prompt Maestro
               </button>
-              <button onClick={() => handleCopy(currentAsset.visual_description, 'Prompt Visual')} className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-white/10 transition-all active:scale-95">
+              <button onClick={copyVisual} className="flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-white/10 transition-all active:scale-95">
                 <Eye size={14} className="text-emerald-400" /> Copiar Visual
               </button>
             </div>
@@ -1021,51 +544,14 @@ export default function SocialLab() {
         </div>
 
         {/* ── UPLOAD DROPZONE ── */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onClick={() => fileInputRef.current?.click()}
-          className={`group mt-4 w-[280px] sm:w-[300px] md:w-[340px] border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 ${
-            dragOver
-              ? 'border-emerald-500 bg-emerald-500/10 scale-[1.01]'
-              : currentAsset?.video_url
-                ? 'border-emerald-500/30 bg-emerald-500/[0.04] hover:bg-emerald-500/[0.07]'
-                : 'border-zinc-700 bg-zinc-900/40 hover:border-emerald-500/40 hover:bg-zinc-900/60'
-          }`}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          {uploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 size={22} className="text-emerald-400 animate-spin" />
-              <span className="text-xs text-zinc-400 font-mono">Subiendo…</span>
-            </div>
-          ) : currentAsset?.video_url ? (
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                <CheckCircle2 size={18} className="text-emerald-400" />
-              </div>
-              <div className="flex flex-col items-start min-w-0">
-                <span className="text-xs text-emerald-300 font-semibold">{mediaType === 'video' ? 'Video' : 'Imagen'} cargado</span>
-                <span className="text-[10px] text-zinc-500">Click o suelta para reemplazar</span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-white/5 flex items-center justify-center transition-colors duration-200 group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30">
-                <FileUp size={18} className="text-zinc-500 transition-colors duration-200 group-hover:text-emerald-400" />
-              </div>
-              <span className="text-xs text-zinc-300 font-semibold mt-1">Sube tu {mediaType === 'video' ? 'video' : 'imagen'}</span>
-              <span className="text-[10px] text-zinc-600">Arrastra o haz click · {mediaType === 'video' ? 'MP4 · WEBM · MOV' : 'JPG · PNG · WEBP'}</span>
-            </div>
-          )}
-        </div>
+        <CampaignUploader
+          uploading={uploading}
+          hasMedia={!!currentAsset?.video_url}
+          mediaType={mediaType}
+          onFile={uploadFile}
+          onMediaTypeDetected={setMediaType}
+          className="mt-4 w-[280px] sm:w-[300px] md:w-[340px]"
+        />
 
         {/* SEO / Hashtags */}
         {data.youtube_seo && (
@@ -1096,82 +582,6 @@ export default function SocialLab() {
           </div>
         </button>
       </div>
-
-      {/* Save Campaign Modal */}
-      <AnimatePresence>
-        {isSaveModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-zinc-950 border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl relative"
-            >
-              <button
-                onClick={() => setIsSaveModalOpen(false)}
-                className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-              
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Bookmark className="text-emerald-500" />
-                Guardar en Historial
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-mono text-zinc-500 uppercase mb-2">Nombre de Campaña</label>
-                  <input 
-                    type="text"
-                    value={campaignName}
-                    onChange={e => setCampaignName(e.target.value)}
-                    placeholder="Ej. Black Friday Q4"
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-mono text-zinc-500 uppercase mb-2">Cliente / Marca</label>
-                  <select 
-                    value={selectedClientId}
-                    onChange={e => setSelectedClientId(e.target.value)}
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors mb-2"
-                  >
-                    <option value="new">+ Crear nuevo cliente...</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
-                  
-                  {selectedClientId === 'new' && (
-                    <input 
-                      type="text"
-                      value={newClientName}
-                      onChange={e => setNewClientName(e.target.value)}
-                      placeholder="Nombre del nuevo cliente"
-                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  )}
-                </div>
-                
-                <button
-                  onClick={handleSaveArchive}
-                  disabled={savingCampaign}
-                  className="w-full mt-2 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {savingCampaign ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-                  Confirmar y Guardar
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
     </div>
   );
 }
