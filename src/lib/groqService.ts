@@ -68,7 +68,7 @@ Comando del CEO: "${command}"`
   }
 }
 
-export async function generateVideoPrompt(duration: '10s' | '30s' | '60s', platform: string, context: any): Promise<string> {
+export async function generateVideoPrompt(duration: '10s' | '30s' | '60s', platform: string, context: any, labContext?: string): Promise<string> {
   const { tokens } = useTokenStore.getState();
   const GROQ_API_KEY = tokens.groq || import.meta.env.VITE_GROQ_API_KEY;
 
@@ -96,6 +96,7 @@ Estrategia / CTA: ${context.call_to_action || 'N/A'}
 REGLAS DE DURACIÓN:
 ${instructions}
 NOTA CLAVE: El de 30s y 60s NO son el de 10s estirado. Deben desarrollar más la narrativa de forma natural.
+${labContext ? `\nCONTEXTO DEL FORMATO:\n${labContext}\n` : ''}
 
 DEBES responder EXACTAMENTE con esta estructura (sin backticks extra de markdown al inicio/fin, solo texto crudo):
 
