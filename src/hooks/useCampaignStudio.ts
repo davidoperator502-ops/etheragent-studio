@@ -305,6 +305,31 @@ export function useCampaignStudio(labType: LabType) {
     }
   }, [user, campaign, currentAsset, labType]);
 
+  // ── 7. Deploy (registra la campaña como 'activa' = desplegada) ──
+  const deployCampaign = useCallback(async (surface: string): Promise<boolean> => {
+    if (!user || !campaign || !currentAsset) {
+      toast.error('Sube tu activo y genera la campaña antes de desplegar');
+      return false;
+    }
+    try {
+      const sector = campaignData?.detected_sector || 'Campaign';
+      const { error } = await supabase.from('campaigns').insert({
+        user_id: user.id,
+        nombre: `${sector} · ${labType.toUpperCase()} Deploy`,
+        plataforma: surface,
+        lab_type: labType,
+        estado: 'activa',
+        contenido: { ...campaign.campaign_data, assets: [currentAsset] },
+      });
+      if (error) throw error;
+      toast.success('Campaña desplegada y registrada como activa');
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al desplegar');
+      return false;
+    }
+  }, [user, campaign, currentAsset, campaignData, labType]);
+
   return {
     config,
     user,
@@ -321,5 +346,7 @@ export function useCampaignStudio(labType: LabType) {
     copy, copyMaster, copyVisual,
     // guardado
     clients, fetchClients, savingCampaign, saveCampaign,
+    // deploy
+    deployCampaign,
   };
 }
