@@ -82,11 +82,9 @@ export default defineConfig(({ mode }) => ({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
-    define: {
-      "import.meta.env.VITE_USE_MOCK": "true",
-      "import.meta.env.VITE_API_BASE_URL": JSON.stringify("/api"),
-      "import.meta.env.VITE_GA_MEASUREMENT_ID": JSON.stringify(""),
-    },
+    // El modo mock se fuerza vía .env.test (VITE_USE_MOCK=true), que Vite carga
+    // sobre .env en modo test. (El antiguo bloque `define` aquí no tenía efecto:
+    // `define` debe ir a nivel raíz, no dentro de `test`.)
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
 }));

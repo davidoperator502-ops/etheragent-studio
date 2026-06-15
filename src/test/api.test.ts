@@ -46,15 +46,17 @@ describe('API Service', () => {
   });
 
   describe('getAvatars', () => {
+    // getAvatars aplica gating de compras: sin user/compras devuelve []. Para probar el
+    // catálogo completo se pasa includeAll=true (comportamiento intencional, ver api.ts:77).
     it('should return an array of avatars', async () => {
-      const avatars = await api.getAvatars();
+      const avatars = await api.getAvatars(null, true);
 
       expect(Array.isArray(avatars)).toBe(true);
       expect(avatars.length).toBeGreaterThan(0);
     });
 
     it('should have required avatar properties', async () => {
-      const avatars = await api.getAvatars();
+      const avatars = await api.getAvatars(null, true);
       const avatar = avatars[0];
 
       expect(avatar).toHaveProperty('id');

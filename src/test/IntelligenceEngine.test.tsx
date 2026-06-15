@@ -1,138 +1,65 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import IntelligenceEngine from '../components/dashboard/IntelligenceEngine';
-import { api, AnalysisData } from '../services/api';
+import { api } from '../services/api';
 
+// El componente fue rediseñado a "EtherClaw — Neural Casting Studio":
+// genera un avatar con api.generateAvatarImage(prompt) y avanza por fases
+// (input → generating → image-ready → paywall …). Estos tests reflejan ese flujo real.
 vi.mock('../services/api', () => ({
-  api: {
-    analyzeUrl: vi.fn(),
-  },
+  api: { generateAvatarImage: vi.fn() },
+  ApiError: class ApiError extends Error {},
 }));
 
-const mockAnalysisData: AnalysisData = {
-  targetAudience: {
-    description: 'SaaS founders aged 28-45 seeking automation.',
-    tags: ['B2B', 'Decision Makers', 'Tech-Savvy'],
-  },
-  financialProjection: {
-    description: 'LTV of $12,400 with 13.9x ROI.',
-    tags: ['High Margin', 'Recurring Revenue'],
-  },
-  executiveDirective: {
-    description: 'Position as workflow orchestration leader.',
-    tags: ['Thought Leadership', 'Differentiation'],
-  },
-  strategicHook: 'What if your team could recover 15 hours per week?',
-};
-
-describe('IntelligenceEngine', () => {
+describe('IntelligenceEngine (EtherClaw Neural Casting Studio)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should render the component with title and input', () => {
+  it('renderiza la fase input con textarea de prompt y botón Generar', () => {
     render(<IntelligenceEngine />);
-
-    expect(screen.getByText('Intelligence Engine')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('enter-your-client-saas.com')).toBeInTheDocument();
-    expect(screen.getByText('Deploy OS')).toBeInTheDocument();
+    expect(screen.getByText('EtherClaw')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Describe tu avatar/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Generar/i })).toBeInTheDocument();
   });
 
-  it('should have Autonomous Strategy API badge', () => {
+  it('deshabilita Generar cuando el prompt está vacío', () => {
     render(<IntelligenceEngine />);
-
-    expect(screen.getByText('Autonomous Strategy API')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Generar/i })).toBeDisabled();
   });
 
-  it('should update URL state when input changes', () => {
+  it('actualiza el prompt al escribir', () => {
     render(<IntelligenceEngine />);
-    
-    const input = screen.getByPlaceholderText('enter-your-client-saas.com');
-    fireEvent.change(input, { target: { value: 'https://test-saas.com' } });
-
-    expect(input).toHaveValue('https://test-saas.com');
+    const input = screen.getByPlaceholderText(/Describe tu avatar/i);
+    fireEvent.change(input, { target: { value: 'Doctora premium en Miami' } });
+    expect(input).toHaveValue('Doctora premium en Miami');
   });
 
-  it('should call analyzeUrl when button is clicked', async () => {
-    vi.mocked(api.analyzeUrl).mockResolvedValue(mockAnalysisData);
-
+  it('rellena el prompt desde una tarjeta de ejemplo', () => {
     render(<IntelligenceEngine />);
-    
-    const input = screen.getByPlaceholderText('enter-your-client-saas.com');
-    fireEvent.change(input, { target: { value: 'https://test-saas.com' } });
-
-    const button = screen.getByText('Deploy OS');
-    fireEvent.click(button);
-
-    await waitFor(() => {
-      expect(api.analyzeUrl).toHaveBeenCalledWith('https://test-saas.com');
-    });
+    fireEvent.click(screen.getByText('Médico boutique en Madrid'));
+    expect(screen.getByPlaceholderText(/Describe tu avatar/i)).toHaveValue('Médico boutique en Madrid');
   });
 
-  it('should show loading state when analyzing', async () => {
-    vi.mocked(api.analyzeUrl).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve(mockAnalysisData), 100))
-    );
-
+  it('no llama a la API cuando el prompt está vacío', () => {
     render(<IntelligenceEngine />);
-    
-    const input = screen.getByPlaceholderText('enter-your-client-saas.com');
-    fireEvent.change(input, { target: { value: 'https://test-saas.com' } });
-
-    const button = screen.getByText('Deploy OS');
-    fireEvent.click(button);
-
-    await waitFor(() => {
-      expect(screen.getByText('Extrayendo...')).toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByRole('button', { name: /Generar/i }));
+    expect(api.generateAvatarImage).not.toHaveBeenCalled();
   });
 
-  it('should display analysis results after successful API call', async () => {
-    vi.mocked(api.analyzeUrl).mockResolvedValue(mockAnalysisData);
-
+  it('llama a generateAvatarImage al pulsar Generar con un prompt', async () => {
+    vi.mocked(api.generateAvatarImage).mockResolvedValue({ imageUrl: 'http://x/img.png', seed: 42 });
     render(<IntelligenceEngine />);
-    
-    const input = screen.getByPlaceholderText('enter-your-client-saas.com');
-    fireEvent.change(input, { target: { value: 'https://test-saas.com' } });
-
-    const button = screen.getByText('Deploy OS');
-    fireEvent.click(button);
-
-    await waitFor(() => {
-      expect(screen.getByText('Core Audience')).toBeInTheDocument();
-      expect(screen.getByText('Financial Projection')).toBeInTheDocument();
-      expect(screen.getByText('Executive Directive')).toBeInTheDocument();
-      expect(screen.getByText(/Strategic Hook/)).toBeInTheDocument();
-    });
+    fireEvent.change(screen.getByPlaceholderText(/Describe tu avatar/i), { target: { value: 'Abogado corporativo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar/i }));
+    await waitFor(() => expect(api.generateAvatarImage).toHaveBeenCalledWith('Abogado corporativo'));
   });
 
-  it('should disable button when URL is empty', () => {
+  it('muestra el estado image-ready tras una generación exitosa', async () => {
+    vi.mocked(api.generateAvatarImage).mockResolvedValue({ imageUrl: 'http://x/img.png', seed: 42 });
     render(<IntelligenceEngine />);
-
-    const button = screen.getByText('Deploy OS');
-    expect(button).toBeDisabled();
-  });
-
-  it('should not call API when URL is empty', () => {
-    render(<IntelligenceEngine />);
-
-    const button = screen.getByText('Deploy OS');
-    fireEvent.click(button);
-
-    expect(api.analyzeUrl).not.toHaveBeenCalled();
-  });
-
-  it('should trigger analysis on Enter key press', async () => {
-    vi.mocked(api.analyzeUrl).mockResolvedValue(mockAnalysisData);
-
-    render(<IntelligenceEngine />);
-    
-    const input = screen.getByPlaceholderText('enter-your-client-saas.com');
-    fireEvent.change(input, { target: { value: 'https://test-saas.com' } });
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-
-    await waitFor(() => {
-      expect(api.analyzeUrl).toHaveBeenCalledWith('https://test-saas.com');
-    });
+    fireEvent.change(screen.getByPlaceholderText(/Describe tu avatar/i), { target: { value: 'Tienda de sneakers' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar/i }));
+    await waitFor(() => expect(screen.getByText('Imagen Generada')).toBeInTheDocument());
   });
 });

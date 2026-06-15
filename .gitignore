@@ -33,3 +33,6 @@ dist-ssr
 # Build artifacts
 dev-dist/
 supabase/.temp/
+
+# Entorno de test (sin secretos: solo VITE_USE_MOCK=true). Se versiona para que CI corra en modo mock.
+!.env.test
