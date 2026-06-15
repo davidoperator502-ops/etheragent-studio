@@ -10,7 +10,7 @@ export default function TokenTelemetry() {
   if (isLoading) return null;
 
   const { computeTokens: usedTokens, totalTokens, planName, isInfinite } = balance;
-  const percentage = isInfinite ? 0 : (usedTokens / totalTokens) * 100;
+  const percentage = isInfinite || totalTokens <= 0 ? 0 : (usedTokens / totalTokens) * 100;
   
   const progressColor = isInfinite ? 'bg-indigo-500' : percentage > 90 ? 'bg-red-500' : percentage > 75 ? 'bg-orange-500' : 'bg-emerald-500';
   const glowColor = isInfinite ? 'shadow-[0_0_10px_rgba(99,102,241,0.5)]' : percentage > 90 ? 'shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'shadow-[0_0_10px_rgba(16,185,129,0.3)]';
