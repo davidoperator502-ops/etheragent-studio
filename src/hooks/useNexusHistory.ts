@@ -7,7 +7,7 @@ export interface NexusCampaign {
     target_url: string;
     detected_sector: string;
     strategy_score: number;
-    campaign_data: any;
+    campaign_data: Record<string, unknown>;
     created_at: string;
 }
 
@@ -37,8 +37,8 @@ export function useNexusHistory() {
                 if (data) {
                     setCampaigns(data as NexusCampaign[]);
                 }
-            } catch (err: any) {
-                console.error('Error accediendo al archivo Nexus:', err.message);
+            } catch (err) {
+                console.error('Error accediendo al archivo Nexus:', err instanceof Error ? err.message : err);
             } finally {
                 setIsLoading(false);
             }

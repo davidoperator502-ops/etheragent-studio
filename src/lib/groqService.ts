@@ -68,7 +68,13 @@ Comando del CEO: "${command}"`
   }
 }
 
-export async function generateVideoPrompt(duration: '10s' | '30s' | '60s', platform: string, context: any, labContext?: string): Promise<string> {
+export interface VideoPromptContext {
+  hook?: string;
+  narrative_body?: string;
+  call_to_action?: string;
+}
+
+export async function generateVideoPrompt(duration: '10s' | '30s' | '60s', platform: string, context: VideoPromptContext, labContext?: string): Promise<string> {
   const { tokens } = useTokenStore.getState();
   const GROQ_API_KEY = tokens.groq || import.meta.env.VITE_GROQ_API_KEY;
 

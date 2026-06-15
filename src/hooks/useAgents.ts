@@ -33,9 +33,10 @@ export function useAgents() {
                 // Inyectamos los datos en el estado
                 if (data) setAgents(data as Agent[]);
 
-            } catch (err: any) {
-                console.error('Error extrayendo agentes de la Neural Matrix:', err.message);
-                setError(err.message);
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                console.error('Error extrayendo agentes de la Neural Matrix:', msg);
+                setError(msg);
             } finally {
                 setIsLoading(false);
             }

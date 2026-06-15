@@ -52,8 +52,8 @@ export function useSocialMetrics() {
                         hookType: data.metrics.hook_type || 'Onda de Choque'
                     });
                 }
-            } catch (err: any) {
-                console.error('Error sincronizando métricas de Valeria:', err.message);
+            } catch (err) {
+                console.error('Error sincronizando métricas de Valeria:', err instanceof Error ? err.message : err);
             } finally {
                 setIsLoading(false);
             }

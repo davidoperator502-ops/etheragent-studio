@@ -52,8 +52,8 @@ export function useSonicMetrics() {
                         platform: data.metrics.audio_platform || 'Spotify B2B'
                     });
                 }
-            } catch (err: any) {
-                console.error('Error sincronizando métricas de Aria:', err.message);
+            } catch (err) {
+                console.error('Error sincronizando métricas de Aria:', err instanceof Error ? err.message : err);
             } finally {
                 setIsLoading(false);
             }

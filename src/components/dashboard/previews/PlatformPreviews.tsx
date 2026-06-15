@@ -1,9 +1,10 @@
 import React from 'react';
 import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, MoreVertical, X, Send, Music2, Plus, ThumbsUp, Repeat2 } from 'lucide-react';
+import type { CampaignAsset } from '@/lib/prompt-engine/types';
 
 interface PreviewProps {
   hasMedia: boolean;
-  asset?: any;
+  asset?: Partial<CampaignAsset> | null;
   userName?: string;
   avatarUrl?: string;
 }

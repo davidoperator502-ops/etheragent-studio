@@ -51,8 +51,8 @@ export function useOOHMetrics() {
                         traffic: data.metrics.ooh_traffic || 'Alto Volumen'
                     });
                 }
-            } catch (err: any) {
-                console.error('Error sincronizando métricas de Viktor:', err.message);
+            } catch (err) {
+                console.error('Error sincronizando métricas de Viktor:', err instanceof Error ? err.message : err);
             } finally {
                 setIsLoading(false);
             }

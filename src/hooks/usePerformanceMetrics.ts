@@ -51,8 +51,8 @@ export function usePerformanceMetrics() {
                         budget: data.budget_allocated || 150000
                     });
                 }
-            } catch (err: any) {
-                console.error('Error sincronizando métricas de Kaelen:', err.message);
+            } catch (err) {
+                console.error('Error sincronizando métricas de Kaelen:', err instanceof Error ? err.message : err);
             } finally {
                 setIsLoading(false);
             }
